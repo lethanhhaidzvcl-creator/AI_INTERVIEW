@@ -102,7 +102,6 @@ Mở file `index.html` bằng trình duyệt, hoặc dùng tiện ích **Live Se
 ## 10. Liên kết dự án
 
 - **GitHub:** https://github.com/lethanhhaidzvcl-creator/AI_INTERVIEW
-- **Trello:** https://trello.com/b/Tp8FqDDD/interview-ai
 
 ---
 
