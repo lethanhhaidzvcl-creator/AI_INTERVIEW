@@ -3,8 +3,9 @@ const cors = require('cors');
 require('dotenv').config();
 const db = require('./config/db');
 
-// 1. Nhập router xác thực vào đây
+// 1. Nhập các router
 const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -12,8 +13,9 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// 2. Nối route: Mọi URL bắt đầu bằng /api/v1/auth sẽ chuyển tiếp vào authRoutes
+// 2. Nối các route API
 app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
 
 // Route kiểm tra kết nối DB sẵn có
 app.get('/api/health', async (req, res) => {
@@ -34,6 +36,7 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
+// 3. Khởi chạy server
 app.listen(port, () => {
     console.log(`server dang chay tai port ${port}`);
 });
