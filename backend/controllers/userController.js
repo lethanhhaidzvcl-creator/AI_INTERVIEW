@@ -6,7 +6,7 @@ const getProfile = async (req, res) => {
         const userId = req.user.id;
 
         const [users] = await db.query(
-            'SELECT id, full_name, email, role, created_at FROM users WHERE id = ?',
+            'SELECT id, full_name, email, target_role, skills, role, created_at FROM users WHERE id = ?',
             [userId]
         );
 
@@ -36,7 +36,7 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { full_name } = req.body;
+        const { full_name, target_role, skills } = req.body;
 
         if (!full_name || full_name.trim() === '') {
             return res.status(400).json({
@@ -46,12 +46,12 @@ const updateProfile = async (req, res) => {
         }
 
         await db.query(
-            'UPDATE users SET full_name = ? WHERE id = ?',
-            [full_name.trim(), userId]
+            'UPDATE users SET full_name = ?, target_role = ?, skills = ? WHERE id = ?',
+            [full_name.trim(), target_role || null, skills || null, userId]
         );
 
         const [updatedUsers] = await db.query(
-            'SELECT id, full_name, email, role FROM users WHERE id = ?',
+            'SELECT id, full_name, email, target_role, skills, role FROM users WHERE id = ?',
             [userId]
         );
 
