@@ -195,3 +195,27 @@ footer p {
         flex-direction: column;
     }
 }
+
+/* Hiển thị thông tin người dùng */
+.auth .user-name {
+  font-weight: 600;
+  color: #4f46e5;
+  font-size: 14px;
+}
+
+/* Nút đăng xuất */
+.auth .logout-btn {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.auth .logout-btn:hover {
+  background-color: #dc2626;
+}

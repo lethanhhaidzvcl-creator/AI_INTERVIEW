@@ -1,7 +1,23 @@
-import { Link } from "react-router-dom";
+
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { getCurrentUser, logoutUser } from "../services/authStorage";
 import "../App.css";
 
 function Home() {
+  const navigate = useNavigate();
+
+  const [currentUser, setCurrentUser] = useState(
+    () => getCurrentUser()
+  );
+
+  // Xử lý đăng xuất
+  function handleLogout() {
+    logoutUser();
+    setCurrentUser(null);
+    navigate("/login");
+  }
+
   return (
     <>
       {/* HEADER */}
@@ -15,8 +31,26 @@ function Home() {
         </nav>
 
         <div className="auth">
-            <Link to="/login">Đăng nhập</Link>
-            <Link to="/register">Đăng ký</Link>
+          {currentUser ? (
+            <>
+              <span className="user-name">
+                Xin chào, {currentUser.full_name}
+              </span>
+
+              <button
+                type="button"
+                className="logout-btn"
+                onClick={handleLogout}
+              >
+                Đăng xuất
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">Đăng nhập</Link>
+              <Link to="/register">Đăng ký</Link>
+            </>
+          )}
         </div>
       </header>
 
@@ -28,9 +62,13 @@ function Home() {
             Nâng cao kỹ năng phỏng vấn với công nghệ AI.
             Thực hành, nhận đánh giá và cải thiện mỗi ngày.
           </p>
-        <Link to="/login" className="btn">
+
+          <Link
+            to={currentUser ? "/interview" : "/login"}
+            className="btn"
+          >
             Bắt đầu phỏng vấn
-        </Link>
+          </Link>
         </section>
 
         <section className="features" id="features">
