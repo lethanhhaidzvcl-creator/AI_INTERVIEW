@@ -1,9 +1,10 @@
-
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "../styles/Auth.css";
+import { registerUser } from "../services/authService";
 
 function Register() {
+  const navigate = useNavigate();
   const [form, setForm] = useState({
     full_name: "",
     email: "",
@@ -24,42 +25,64 @@ function Register() {
     }));
   }
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
 
-    const { full_name, email, password, confirmPassword } = form;
 
-    if (
-      !full_name.trim() ||
-      !email.trim() ||
-      !password ||
-      !confirmPassword
-    ) {
-      setError("Vui lòng nhập đầy đủ thông tin!");
-      return;
-    }
+async function handleSubmit(e) {
+  e.preventDefault();
+  setError("");
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  const { full_name, email, password, confirmPassword } = form;
 
-    if (!emailRegex.test(email.trim())) {
-      setError("Email không đúng định dạng!");
-      return;
-    }
-
-    if (password.length < 6) {
-      setError("Mật khẩu phải có ít nhất 6 ký tự!");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Mật khẩu xác nhận không khớp!");
-      return;
-    }
-
-    // Chưa kết nối API Backend
-    setError("Chưa kết nối máy chủ đăng ký.");
+  // 1. Kiểm tra các trường bắt buộc
+  if (
+    !full_name.trim() ||
+    !email.trim() ||
+    !password ||
+    !confirmPassword
+  ) {
+    setError("Vui lòng nhập đầy đủ thông tin!");
+    return;
   }
+
+  // 2. Kiểm tra email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(email.trim())) {
+    setError("Email không đúng định dạng!");
+    return;
+  }
+
+  // 3. Kiểm tra mật khẩu
+  if (password.length < 6) {
+    setError("Mật khẩu phải có ít nhất 6 ký tự!");
+    return;
+  }
+
+  // 4. Kiểm tra xác nhận mật khẩu
+  if (password !== confirmPassword) {
+    setError("Mật khẩu xác nhận không khớp!");
+    return;
+  }
+
+  // 5. Gọi API đăng ký
+  try {
+    const result = await registerUser({
+      full_name: full_name.trim(),
+      email: email.trim(),
+      password,
+    });
+
+    // 6. Thông báo thành công
+    alert(result.message || "Đăng ký thành công!");
+
+    // 7. Chuyển sang trang đăng nhập
+    navigate("/login");
+
+  } catch (error) {
+    setError(error.message || "Đăng ký thất bại!");
+  }
+}
+
 
   return (
     <main className="auth-page">

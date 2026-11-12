@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import "../styles/Auth.css";
+import { loginUser } from "../services/authService";
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -9,25 +10,48 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
 
-  function handleSubmit(e) {
-    e.preventDefault();
-    setError("");
 
-    if (!email.trim() || !password) {
-      setError("Vui lòng nhập đầy đủ thông tin!");
-      return;
-    }
+async function handleSubmit(e) {
+  e.preventDefault();
+  setError("");
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-    if (!emailRegex.test(email.trim())) {
-      setError("Email không đúng định dạng!");
-      return;
-    }
-
-    // Chưa kết nối API Backend
-    setError("Chưa kết nối máy chủ đăng nhập.");
+  // 1. Kiểm tra dữ liệu đầu vào
+  if (!email.trim() || !password) {
+    setError("Vui lòng nhập đầy đủ thông tin!");
+    return;
   }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(email.trim())) {
+    setError("Email không đúng định dạng!");
+    return;
+  }
+
+  // 2. Gọi API đăng nhập
+  try {
+    const result = await loginUser({
+      email: email.trim(),
+      password: password,
+    });
+
+    // 3. Lấy token và thông tin người dùng
+    const { token, user } = result.data;
+
+    // 4. Lưu phiên đăng nhập
+    sessionStorage.setItem("token", token);
+    sessionStorage.setItem("user", JSON.stringify(user));
+
+    // 5. Thông báo thành công
+    alert("Đăng nhập thành công!");
+
+    // 6. Chuyển về trang chủ
+    window.location.href = "/";
+  } catch (error) {
+    setError(error.message || "Đăng nhập thất bại!");
+  }
+}
+
 
   return (
     <main className="auth-page">
