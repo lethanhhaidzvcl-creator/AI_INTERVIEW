@@ -6,7 +6,6 @@ const createSession = async (req, res) => {
         const userId = req.user.id;
         const { position_id, total_questions } = req.body;
 
-        // 1. Kiểm tra đầu vào bắt buộc
         if (!position_id) {
             return res.status(400).json({
                 status: 'error',
@@ -14,7 +13,6 @@ const createSession = async (req, res) => {
             });
         }
 
-        // 2. Kiểm tra position_id có tồn tại và đang hoạt động trong bảng job_positions không
         const [positions] = await db.query(
             'SELECT id, name, level FROM job_positions WHERE id = ? AND is_active = TRUE',
             [position_id]
@@ -30,7 +28,6 @@ const createSession = async (req, res) => {
         const numQuestions = total_questions || 3;
         const initialStatus = 'IN_PROGRESS';
 
-        // 3. Khởi tạo phiên phỏng vấn mới vào bảng interview_sessions
         const [result] = await db.query(
             'INSERT INTO interview_sessions (user_id, position_id, status, total_questions) VALUES (?, ?, ?, ?)',
             [userId, position_id, initialStatus, numQuestions]
@@ -38,7 +35,6 @@ const createSession = async (req, res) => {
 
         const sessionId = result.insertId;
 
-        // 4. Chọn ngẫu nhiên các câu hỏi không trùng lặp theo position_id và lưu vào session_questions
         const [availableQuestions] = await db.query(
             'SELECT id FROM questions WHERE position_id = ? AND is_active = TRUE ORDER BY RAND() LIMIT ?',
             [position_id, Number(numQuestions)]
@@ -78,7 +74,6 @@ const getSessionQuestions = async (req, res) => {
         const userId = req.user.id;
         const sessionId = req.params.id;
 
-        // 1. Kiểm tra phiên phỏng vấn có tồn tại và thuộc về user đang đăng nhập không
         const [sessions] = await db.query(
             'SELECT id, position_id, status, total_questions FROM interview_sessions WHERE id = ? AND user_id = ?',
             [sessionId, userId]
@@ -91,7 +86,6 @@ const getSessionQuestions = async (req, res) => {
             });
         }
 
-        // 2. Truy xuất danh sách câu hỏi theo thứ tự order_no, đảm bảo không lặp lại
         const [questions] = await db.query(
             `SELECT 
                 sq.id AS session_question_id,
@@ -126,7 +120,97 @@ const getSessionQuestions = async (req, res) => {
     }
 };
 
+// POST /api/v1/sessions/:id/answers
+const submitAnswer = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const sessionId = req.params.id;
+        const { session_question_id, answer_text } = req.body;
+
+        // 1. Kiểm tra dữ liệu đầu vào
+        if (!session_question_id || !answer_text || answer_text.trim() === '') {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Vui lòng cung cấp session_question_id và nội dung câu trả lời (answer_text)'
+            });
+        }
+
+        // 2. Kiểm tra phiên phỏng vấn có tồn tại, thuộc về user và đang mở không
+        const [sessions] = await db.query(
+            'SELECT id, status FROM interview_sessions WHERE id = ? AND user_id = ?',
+            [sessionId, userId]
+        );
+
+        if (sessions.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phiên phỏng vấn hoặc bạn không có quyền truy cập'
+            });
+        }
+
+        if (sessions[0].status !== 'IN_PROGRESS') {
+            return res.status(400).json({
+                status: 'error',
+                message: 'Phiên phỏng vấn đã kết thúc, không thể gửi thêm câu trả lời'
+            });
+        }
+
+        // 3. Kiểm tra câu hỏi có thuộc phiên phỏng vấn này không
+        const [sqRows] = await db.query(
+            'SELECT id, order_no FROM session_questions WHERE id = ? AND session_id = ?',
+            [session_question_id, sessionId]
+        );
+
+        if (sqRows.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Câu hỏi không thuộc phiên phỏng vấn này'
+            });
+        }
+
+        // 4. Lưu câu trả lời vào bảng answers (nếu đã trả lời câu này trước đó thì cập nhật lại)
+        const [existingAnswers] = await db.query(
+            'SELECT id FROM answers WHERE session_id = ? AND session_question_id = ?',
+            [sessionId, session_question_id]
+        );
+
+        let answerId;
+        if (existingAnswers.length > 0) {
+            answerId = existingAnswers[0].id;
+            await db.query(
+                'UPDATE answers SET answer_text = ?, submitted_at = CURRENT_TIMESTAMP WHERE id = ?',
+                [answer_text.trim(), answerId]
+            );
+        } else {
+            const [insertRes] = await db.query(
+                'INSERT INTO answers (session_id, session_question_id, answer_text) VALUES (?, ?, ?)',
+                [sessionId, session_question_id, answer_text.trim()]
+            );
+            answerId = insertRes.insertId;
+        }
+
+        return res.status(201).json({
+            status: 'success',
+            message: 'Lưu câu trả lời ứng viên thành công',
+            data: {
+                answer_id: answerId,
+                session_id: Number(sessionId),
+                session_question_id: Number(session_question_id),
+                answer_text: answer_text.trim()
+            }
+        });
+    } catch (error) {
+        console.error('Lỗi API submitAnswer:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Lỗi hệ thống khi lưu câu trả lời',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     createSession,
-    getSessionQuestions
+    getSessionQuestions,
+    submitAnswer
 };
