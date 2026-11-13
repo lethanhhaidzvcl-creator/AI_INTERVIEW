@@ -36,15 +36,30 @@ const createSession = async (req, res) => {
             [userId, position_id, initialStatus, numQuestions]
         );
 
+        const sessionId = result.insertId;
+
+        // 4. Chọn ngẫu nhiên các câu hỏi không trùng lặp theo position_id và lưu vào session_questions
+        const [availableQuestions] = await db.query(
+            'SELECT id FROM questions WHERE position_id = ? AND is_active = TRUE ORDER BY RAND() LIMIT ?',
+            [position_id, Number(numQuestions)]
+        );
+
+        for (let i = 0; i < availableQuestions.length; i++) {
+            await db.query(
+                'INSERT INTO session_questions (session_id, question_id, order_no) VALUES (?, ?, ?)',
+                [sessionId, availableQuestions[i].id, i + 1]
+            );
+        }
+
         return res.status(201).json({
             status: 'success',
             message: 'Khởi tạo phiên phỏng vấn thành công',
             data: {
-                sessionId: result.insertId,
+                sessionId,
                 userId,
                 position: positions[0],
                 status: initialStatus,
-                total_questions: numQuestions
+                total_questions: availableQuestions.length
             }
         });
     } catch (error) {
@@ -57,6 +72,61 @@ const createSession = async (req, res) => {
     }
 };
 
+// GET /api/v1/sessions/:id/questions
+const getSessionQuestions = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const sessionId = req.params.id;
+
+        // 1. Kiểm tra phiên phỏng vấn có tồn tại và thuộc về user đang đăng nhập không
+        const [sessions] = await db.query(
+            'SELECT id, position_id, status, total_questions FROM interview_sessions WHERE id = ? AND user_id = ?',
+            [sessionId, userId]
+        );
+
+        if (sessions.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phiên phỏng vấn hoặc bạn không có quyền truy cập'
+            });
+        }
+
+        // 2. Truy xuất danh sách câu hỏi theo thứ tự order_no, đảm bảo không lặp lại
+        const [questions] = await db.query(
+            `SELECT 
+                sq.id AS session_question_id,
+                sq.order_no,
+                q.id AS question_id,
+                q.content,
+                q.difficulty
+            FROM session_questions sq
+            INNER JOIN questions q ON sq.question_id = q.id
+            WHERE sq.session_id = ?
+            ORDER BY sq.order_no ASC`,
+            [sessionId]
+        );
+
+        return res.status(200).json({
+            status: 'success',
+            message: 'Lấy danh sách câu hỏi theo thứ tự thành công',
+            data: {
+                session_id: Number(sessionId),
+                status: sessions[0].status,
+                total_questions: questions.length,
+                questions
+            }
+        });
+    } catch (error) {
+        console.error('Lỗi API getSessionQuestions:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Lỗi hệ thống khi lấy danh sách câu hỏi',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
-    createSession
+    createSession,
+    getSessionQuestions
 };
