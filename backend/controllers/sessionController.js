@@ -208,10 +208,11 @@ const submitAnswer = async (req, res) => {
 
 // POST /api/v1/sessions/:id/finish
 const finishSession = async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const sessionId = req.params.id;
+    const userId = req.user.id;
+    const sessionId = req.params.id;
+    const simulateError = Boolean(req.body?.simulate_ai_error);
 
+    try {
         const [sessions] = await db.query(
             'SELECT id, status FROM interview_sessions WHERE id = ? AND user_id = ?',
             [sessionId, userId]
@@ -224,21 +225,30 @@ const finishSession = async (req, res) => {
             });
         }
 
-        if (sessions[0].status !== 'IN_PROGRESS') {
+        const currentStatus = sessions[0].status;
+
+        if (currentStatus === 'COMPLETED') {
             return res.status(400).json({
                 status: 'error',
-                message: `Không thể hoàn thành phiên phỏng vấn đang ở trạng thái ${sessions[0].status}`
+                message: 'Phiên phỏng vấn này đã được chấm điểm hoàn tất'
             });
         }
 
-        // 1. Chuyển sang PENDING_EVALUATION và khóa câu trả lời
-        await db.query(
-            'UPDATE interview_sessions SET status = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?',
-            ['PENDING_EVALUATION', sessionId]
-        );
+        if (currentStatus !== 'IN_PROGRESS' && currentStatus !== 'PENDING_EVALUATION') {
+            return res.status(400).json({
+                status: 'error',
+                message: `Không thể xử lý phiên phỏng vấn ở trạng thái ${currentStatus}`
+            });
+        }
 
-        // 2. Gọi AI chấm điểm, lưu vào bảng evaluations + session_results và chuyển sang COMPLETED
-        const evaluation = await evaluateAndSaveSession(sessionId);
+        if (currentStatus === 'IN_PROGRESS') {
+            await db.query(
+                'UPDATE interview_sessions SET status = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?',
+                ['PENDING_EVALUATION', sessionId]
+            );
+        }
+
+        const evaluation = await evaluateAndSaveSession(sessionId, { simulateError });
 
         return res.status(200).json({
             status: 'success',
@@ -250,11 +260,18 @@ const finishSession = async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('Lỗi API finishSession:', error);
-        return res.status(500).json({
+        console.error('Lỗi xử lý AI khi kết thúc phiên (BR-06):', error.message);
+
+        const isAiError = ['AI_TIMEOUT', 'AI_NETWORK_ERROR', 'AI_PROVIDER_ERROR', 'AI_INVALID_RESPONSE'].includes(error.code);
+        return res.status(isAiError ? 503 : 500).json({
             status: 'error',
-            message: 'Lỗi hệ thống khi hoàn thành và chấm điểm phiên phỏng vấn',
-            error: error.message
+            error_code: error.code || 'EVALUATION_FAILED',
+            message: 'Dịch vụ AI tạm thời gián đoạn hoặc quá thời gian phản hồi. Bài làm của bạn đã được bảo toàn, vui lòng thử gọi lại.',
+            data: {
+                session_id: Number(sessionId),
+                status: 'PENDING_EVALUATION',
+                can_retry: true
+            }
         });
     }
 };

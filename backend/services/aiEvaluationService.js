@@ -1,11 +1,42 @@
 const db = require('../config/db');
 
-const evaluateWithAI = async (positionName, level, qaList) => {
+const AI_TIMEOUT_MS = Number(process.env.AI_TIMEOUT_MS) || 15000;
+
+const fetchWithTimeout = async (url, options, timeoutMs = AI_TIMEOUT_MS) => {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+        const response = await fetch(url, {
+            ...options,
+            signal: controller.signal
+        });
+        return response;
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            const timeoutErr = new Error(`Yêu cầu chấm điểm AI vượt quá thời gian chờ (${timeoutMs / 1000}s)`);
+            timeoutErr.code = 'AI_TIMEOUT';
+            throw timeoutErr;
+        }
+        const networkErr = new Error(`Không thể kết nối tới dịch vụ AI: ${error.message}`);
+        networkErr.code = 'AI_NETWORK_ERROR';
+        throw networkErr;
+    } finally {
+        clearTimeout(timeoutId);
+    }
+};
+
+const evaluateWithAI = async (positionName, level, qaList, simulateError = false) => {
+    if (simulateError) {
+        const simErr = new Error('Dịch vụ AI tạm thời gián đoạn hoặc quá thời gian phản hồi (Simulated Timeout)');
+        simErr.code = 'AI_TIMEOUT';
+        throw simErr;
+    }
+
     const apiKey = process.env.OPENAI_API_KEY;
 
     if (apiKey && apiKey.trim() !== '') {
-        try {
-            const prompt = `Bạn là chuyên gia phỏng vấn kỹ thuật cho vị trí ${positionName} (${level}).
+        const prompt = `Bạn là chuyên gia phỏng vấn kỹ thuật cho vị trí ${positionName} (${level}).
 Hãy đánh giá danh sách câu hỏi và câu trả lời của ứng viên dưới đây:
 ${JSON.stringify(qaList, null, 2)}
 
@@ -31,31 +62,37 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo
   ]
 }`;
 
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
-                },
-                body: JSON.stringify({
-                    model: 'gpt-4o-mini',
-                    messages: [{ role: 'user', content: prompt }],
-                    temperature: 0.3
-                })
-            });
+        const response = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o-mini',
+                messages: [{ role: 'user', content: prompt }],
+                temperature: 0.3
+            })
+        });
 
-            if (response.ok) {
-                const data = await response.json();
-                const rawText = data.choices[0].message.content.trim();
-                const cleanJson = rawText.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
-                return JSON.parse(cleanJson);
-            }
-        } catch (err) {
-            console.error('Chuyển sang chế độ AI fallback do lỗi gọi OpenAI:', err.message);
+        if (!response.ok) {
+            const apiErr = new Error(`LLM trả về mã lỗi HTTP ${response.status}`);
+            apiErr.code = 'AI_PROVIDER_ERROR';
+            throw apiErr;
         }
+
+        const data = await response.json();
+        const rawText = data?.choices?.[0]?.message?.content?.trim();
+        if (!rawText) {
+            const parseErr = new Error('Phản hồi từ AI rỗng hoặc sai định dạng');
+            parseErr.code = 'AI_INVALID_RESPONSE';
+            throw parseErr;
+        }
+
+        const cleanJson = rawText.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+        return JSON.parse(cleanJson);
     }
 
-    // Fallback chấm điểm tự động dựa trên độ dài & mức độ hoàn thiện câu trả lời
     const answeredCount = qaList.filter(item => item.answer_text && item.answer_text.trim().length > 0).length;
     const avgLength = answeredCount > 0
         ? qaList.reduce((sum, item) => sum + (item.answer_text ? item.answer_text.trim().length : 0), 0) / qaList.length
@@ -89,8 +126,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo
     };
 };
 
-const evaluateAndSaveSession = async (sessionId) => {
-    // 1. Lấy thông tin phiên & vị trí ứng tuyển
+const evaluateAndSaveSession = async (sessionId, options = {}) => {
     const [sessionRows] = await db.query(
         `SELECT s.id, jp.name AS position_name, jp.level 
          FROM interview_sessions s
@@ -105,7 +141,6 @@ const evaluateAndSaveSession = async (sessionId) => {
 
     const { position_name, level } = sessionRows[0];
 
-    // 2. Lấy toàn bộ câu hỏi và câu trả lời của phiên
     const [qaList] = await db.query(
         `SELECT sq.order_no, q.content AS question, a.answer_text
          FROM session_questions sq
@@ -116,10 +151,13 @@ const evaluateAndSaveSession = async (sessionId) => {
         [sessionId]
     );
 
-    // 3. Gọi AI đánh giá & parse kết quả
-    const evaluationResult = await evaluateWithAI(position_name, level, qaList);
+    const evaluationResult = await evaluateWithAI(
+        position_name,
+        level,
+        qaList,
+        Boolean(options.simulateError)
+    );
 
-    // 4. Lưu chi tiết từng tiêu chí vào bảng evaluations
     await db.query('DELETE FROM evaluations WHERE session_id = ?', [sessionId]);
     for (const item of evaluationResult.details) {
         await db.query(
@@ -136,7 +174,6 @@ const evaluateAndSaveSession = async (sessionId) => {
         );
     }
 
-    // 5. Lưu kết quả tổng quan vào bảng session_results
     await db.query(
         `INSERT INTO session_results (session_id, overall_score, summary_feedback)
          VALUES (?, ?, ?)
@@ -147,7 +184,6 @@ const evaluateAndSaveSession = async (sessionId) => {
         [sessionId, evaluationResult.overall_score, evaluationResult.summary_feedback]
     );
 
-    // 6. Cập nhật trạng thái phiên phỏng vấn sang COMPLETED
     await db.query(
         'UPDATE interview_sessions SET status = ? WHERE id = ?',
         ['COMPLETED', sessionId]
