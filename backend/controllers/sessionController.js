@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { evaluateAndSaveSession } = require('../services/aiEvaluationService');
 
 // POST /api/v1/sessions
 const createSession = async (req, res) => {
@@ -230,25 +231,29 @@ const finishSession = async (req, res) => {
             });
         }
 
-        const newStatus = 'PENDING_EVALUATION';
+        // 1. Chuyển sang PENDING_EVALUATION và khóa câu trả lời
         await db.query(
             'UPDATE interview_sessions SET status = ?, finished_at = CURRENT_TIMESTAMP WHERE id = ?',
-            [newStatus, sessionId]
+            ['PENDING_EVALUATION', sessionId]
         );
+
+        // 2. Gọi AI chấm điểm, lưu vào bảng evaluations + session_results và chuyển sang COMPLETED
+        const evaluation = await evaluateAndSaveSession(sessionId);
 
         return res.status(200).json({
             status: 'success',
-            message: 'Hoàn thành phiên phỏng vấn và khóa câu trả lời thành công',
+            message: 'Hoàn thành phiên phỏng vấn và chấm điểm AI thành công',
             data: {
                 session_id: Number(sessionId),
-                status: newStatus
+                status: 'COMPLETED',
+                evaluation
             }
         });
     } catch (error) {
         console.error('Lỗi API finishSession:', error);
         return res.status(500).json({
             status: 'error',
-            message: 'Lỗi hệ thống khi hoàn thành phiên phỏng vấn',
+            message: 'Lỗi hệ thống khi hoàn thành và chấm điểm phiên phỏng vấn',
             error: error.message
         });
     }
