@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { useState } from 'react';
 import '../styles/InterviewSetup.css';
 
@@ -85,10 +86,17 @@ export default function InterviewSetup() {
               <div><dt>Cấp độ</dt><dd>{config.level}</dd></div>
               <div><dt>Số câu hỏi</dt><dd>{config.count} câu</dd></div>
             </dl>
-            <button type="submit">Xác nhận cấu hình</button>
+                        <button type="submit">Xác nhận cấu hình</button>
+
             <div className="interview-setup__status" role="status">
               {confirmed && 'Đã xác nhận cấu hình.'}
             </div>
+
+            {confirmed && (
+            <Link className="interview-setup__room-link" to="/interview/room" state={{ count: config.count }}>
+                Vào phòng phỏng vấn →
+            </Link>
+            )}
           </aside>
         </form>
       </div>
