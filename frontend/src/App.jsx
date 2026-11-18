@@ -1,3 +1,4 @@
+import InterviewRoom from './pages/InterviewRoom.jsx';
 import InterviewSetup from './pages/InterviewSetup.jsx';
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
@@ -13,6 +14,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/interview" element={<InterviewSetup />} />
+        <Route path="/interview/room" element={<InterviewRoom />} />
       </Routes>
     </BrowserRouter>
   );

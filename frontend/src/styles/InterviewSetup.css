@@ -138,3 +138,11 @@
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+.interview-setup__room-link {
+  display: inline-block;
+  margin-top: 12px;
+  color: #fff;
+  font-weight: 700;
+  text-decoration: underline;
+}
