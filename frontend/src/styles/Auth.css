@@ -1,0 +1,253 @@
+
+.auth-page {
+  min-height: 100vh;
+  padding: 32px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #eef2ff, #dbeafe);
+  color: #1e293b;
+  font-family: Arial, sans-serif;
+}
+
+.auth-page * {
+  box-sizing: border-box;
+}
+
+.auth-container {
+  display: flex;
+  width: 100%;
+  max-width: 1050px;
+  min-height: 630px;
+  overflow: hidden;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 20px 60px rgba(79, 70, 229, 0.15);
+}
+
+/* BÊN TRÁI */
+.auth-banner {
+  width: 45%;
+  padding: 42px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  color: white;
+  background: linear-gradient(150deg, #4f46e5, #7c3aed);
+}
+
+.auth-brand {
+  color: white;
+  text-decoration: none;
+  font-size: 25px;
+  font-weight: 700;
+}
+
+.auth-banner-content {
+  text-align: center;
+  padding: 55px 0;
+}
+
+.auth-robot {
+  font-size: 85px;
+  margin-bottom: 25px;
+}
+
+.auth-banner-content h1 {
+  font-size: 32px;
+  line-height: 1.3;
+  margin-bottom: 20px;
+}
+
+.auth-banner-content p {
+  font-size: 16px;
+  line-height: 1.8;
+  color: #e0e7ff;
+}
+
+.auth-banner > span {
+  text-align: center;
+  font-size: 13px;
+  color: #c7d2fe;
+}
+
+/* BÊN PHẢI */
+.auth-form-section {
+  width: 55%;
+  padding: 35px 55px;
+}
+
+.auth-back {
+  display: inline-block;
+  color: #64748b;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.auth-back:hover {
+  color: #4f46e5;
+}
+
+.auth-form-content {
+  width: 100%;
+  max-width: 390px;
+  margin: 40px auto 20px;
+}
+
+.auth-mobile-logo {
+  display: none;
+}
+
+.auth-form-content h2 {
+  font-size: 30px;
+  margin-bottom: 10px;
+  color: #1e293b;
+}
+
+.auth-subtitle {
+  color: #64748b;
+  font-size: 15px;
+  margin-bottom: 30px;
+}
+
+/* INPUT */
+.auth-field {
+  margin-bottom: 20px;
+}
+
+.auth-field label {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 9px;
+  color: #334155;
+}
+
+.auth-field input {
+  display: block;
+  width: 100%;
+  height: 48px;
+  padding: 0 15px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9px;
+  background: white;
+  color: #1e293b;
+  outline: none;
+  font-size: 15px;
+}
+
+.auth-field input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+}
+
+.auth-field input::placeholder {
+  color: #94a3b8;
+}
+
+/* HIỆN / ẨN MẬT KHẨU */
+.auth-password {
+  position: relative;
+}
+
+.auth-password input {
+  padding-right: 75px;
+}
+
+.auth-password button {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: #4f46e5;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* BUTTON */
+.auth-submit {
+  display: block;
+  width: 100%;
+  padding: 15px;
+  margin-top: 12px;
+  background: #4f46e5;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.auth-submit:hover {
+  background: #3730a3;
+}
+
+.auth-error {
+  color: #dc2626;
+  font-size: 14px;
+  margin: 10px 0;
+}
+
+.auth-switch {
+  margin-top: 25px;
+  text-align: center;
+  font-size: 14px;
+  color: #64748b;
+}
+
+.auth-switch a {
+  color: #4f46e5;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .auth-banner {
+    display: none;
+  }
+
+  .auth-container {
+    max-width: 460px;
+    min-height: auto;
+  }
+
+  .auth-form-section {
+    width: 100%;
+    padding: 30px 25px;
+  }
+
+  .auth-form-content {
+    margin-top: 30px;
+  }
+
+  .auth-mobile-logo {
+    display: block;
+    margin-bottom: 25px;
+    font-size: 23px;
+    font-weight: 700;
+    color: #4f46e5;
+  }
+
+  .auth-form-content h2 {
+    font-size: 26px;
+  }
+}
+
+@media (max-width: 420px) {
+  .auth-page {
+    padding: 12px;
+  }
+
+  .auth-form-section {
+    padding: 25px 18px;
+  }
+}
