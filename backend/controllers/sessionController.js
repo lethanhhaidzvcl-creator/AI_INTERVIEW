@@ -276,9 +276,124 @@ const finishSession = async (req, res) => {
     }
 };
 
+// GET /api/v1/sessions/:id/result (FR-10: Kết quả đánh giá chi tiết)
+const getSessionResult = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const sessionId = req.params.id;
+
+        const [sessions] = await db.query(
+            `SELECT 
+                s.id AS session_id,
+                s.status,
+                s.total_questions,
+                s.started_at,
+                s.finished_at,
+                jp.id AS position_id,
+                jp.name AS position_name,
+                jp.level AS position_level
+             FROM interview_sessions s
+             INNER JOIN job_positions jp ON s.position_id = jp.id
+             WHERE s.id = ? AND s.user_id = ?`,
+            [sessionId, userId]
+        );
+
+        if (sessions.length === 0) {
+            return res.status(404).json({
+                status: 'error',
+                message: 'Không tìm thấy phiên phỏng vấn hoặc bạn không có quyền truy cập'
+            });
+        }
+
+        const sessionInfo = sessions[0];
+
+        if (sessionInfo.status !== 'COMPLETED') {
+            return res.status(400).json({
+                status: 'error',
+                message: `Phiên phỏng vấn chưa hoàn tất chấm điểm (trạng thái hiện tại: ${sessionInfo.status})`
+            });
+        }
+
+        const [resultRows] = await db.query(
+            'SELECT overall_score, summary_feedback, evaluated_at FROM session_results WHERE session_id = ?',
+            [sessionId]
+        );
+
+        const [criteriaRows] = await db.query(
+            `SELECT id, criterion_name, score, strength, weakness, suggestion
+             FROM evaluations
+             WHERE session_id = ?
+             ORDER BY id ASC`,
+            [sessionId]
+        );
+
+        const [questionReviewRows] = await db.query(
+            `SELECT 
+                sq.order_no,
+                q.id AS question_id,
+                q.content AS question_content,
+                q.difficulty,
+                a.answer_text AS candidate_answer,
+                q.sample_answer AS suggested_answer,
+                a.submitted_at
+             FROM session_questions sq
+             INNER JOIN questions q ON sq.question_id = q.id
+             LEFT JOIN answers a ON a.session_question_id = sq.id AND a.session_id = sq.session_id
+             WHERE sq.session_id = ?
+             ORDER BY sq.order_no ASC`,
+            [sessionId]
+        );
+
+        const summary = resultRows[0] || {
+            overall_score: null,
+            summary_feedback: null,
+            evaluated_at: null
+        };
+
+        return res.status(200).json({
+            status: 'success',
+            message: 'Lấy kết quả đánh giá chi tiết thành công',
+            data: {
+                session: {
+                    session_id: sessionInfo.session_id,
+                    status: sessionInfo.status,
+                    position: {
+                        id: sessionInfo.position_id,
+                        name: sessionInfo.position_name,
+                        level: sessionInfo.position_level
+                    },
+                    total_questions: sessionInfo.total_questions,
+                    started_at: sessionInfo.started_at,
+                    finished_at: sessionInfo.finished_at
+                },
+                overall_score: Number(summary.overall_score),
+                summary_feedback: summary.summary_feedback,
+                evaluated_at: summary.evaluated_at,
+                criteria_evaluations: criteriaRows.map(item => ({
+                    id: item.id,
+                    criterion_name: item.criterion_name,
+                    score: Number(item.score),
+                    strength: item.strength,
+                    weakness: item.weakness,
+                    suggestion: item.suggestion
+                })),
+                questions_review: questionReviewRows
+            }
+        });
+    } catch (error) {
+        console.error('Lỗi API getSessionResult:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Lỗi hệ thống khi lấy kết quả đánh giá chi tiết',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
     createSession,
     getSessionQuestions,
     submitAnswer,
-    finishSession
+    finishSession,
+    getSessionResult
 };

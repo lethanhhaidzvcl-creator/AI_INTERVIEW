@@ -3,16 +3,12 @@ const router = express.Router();
 const sessionController = require('../controllers/sessionController');
 const { verifyToken } = require('../middlewares/authMiddleware');
 
-// POST /api/v1/sessions
-router.post('/', verifyToken, sessionController.createSession);
+router.use(verifyToken);
 
-// GET /api/v1/sessions/:id/questions
-router.get('/:id/questions', verifyToken, sessionController.getSessionQuestions);
-
-// POST /api/v1/sessions/:id/answers
-router.post('/:id/answers', verifyToken, sessionController.submitAnswer);
-
-// POST /api/v1/sessions/:id/finish
-router.post('/:id/finish', verifyToken, sessionController.finishSession);
+router.post('/', sessionController.createSession);
+router.get('/:id/questions', sessionController.getSessionQuestions);
+router.post('/:id/answers', sessionController.submitAnswer);
+router.post('/:id/finish', sessionController.finishSession);
+router.get('/:id/result', sessionController.getSessionResult);
 
 module.exports = router;
