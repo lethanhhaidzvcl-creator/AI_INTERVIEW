@@ -69,6 +69,101 @@ const createSession = async (req, res) => {
     }
 };
 
+// GET /api/v1/sessions/history (FR-11, BR-07: Lịch sử phỏng vấn, lọc vị trí & phân quyền)
+const getSessionHistory = async (req, res) => {
+    try {
+        const { id: userId, role } = req.user;
+        const { position_id, status, user_id: filterUserId } = req.query;
+
+        let sql = `
+            SELECT 
+                s.id AS session_id,
+                s.user_id,
+                u.full_name AS candidate_name,
+                u.email AS candidate_email,
+                s.position_id,
+                jp.name AS position_name,
+                jp.level AS position_level,
+                s.status,
+                s.total_questions,
+                s.started_at,
+                s.finished_at,
+                sr.overall_score,
+                sr.summary_feedback,
+                sr.evaluated_at
+            FROM interview_sessions s
+            INNER JOIN job_positions jp ON s.position_id = jp.id
+            INNER JOIN users u ON s.user_id = u.id
+            LEFT JOIN session_results sr ON sr.session_id = s.id
+            WHERE 1 = 1
+        `;
+        const params = [];
+
+        // BR-07: Phân quyền dữ liệu theo vai trò tài khoản
+        if (role !== 'ADMIN') {
+            sql += ' AND s.user_id = ?';
+            params.push(userId);
+        } else if (filterUserId) {
+            sql += ' AND s.user_id = ?';
+            params.push(filterUserId);
+        }
+
+        // Lọc theo vị trí ứng tuyển (position_id)
+        if (position_id) {
+            sql += ' AND s.position_id = ?';
+            params.push(position_id);
+        }
+
+        // Lọc thêm theo trạng thái phiên nếu có truyền
+        if (status) {
+            sql += ' AND s.status = ?';
+            params.push(status.toUpperCase());
+        }
+
+        sql += ' ORDER BY s.started_at DESC, s.id DESC';
+
+        const [rows] = await db.query(sql, params);
+
+        const history = rows.map(item => ({
+            session_id: item.session_id,
+            candidate: {
+                user_id: item.user_id,
+                full_name: item.candidate_name,
+                email: item.candidate_email
+            },
+            position: {
+                id: item.position_id,
+                name: item.position_name,
+                level: item.position_level
+            },
+            status: item.status,
+            total_questions: item.total_questions,
+            overall_score: item.overall_score !== null ? Number(item.overall_score) : null,
+            summary_feedback: item.summary_feedback,
+            started_at: item.started_at,
+            finished_at: item.finished_at,
+            evaluated_at: item.evaluated_at
+        }));
+
+        return res.status(200).json({
+            status: 'success',
+            message: 'Lấy lịch sử phỏng vấn thành công',
+            data: {
+                role,
+                total_sessions: history.length,
+                sessions: history
+            }
+        });
+    } catch (error) {
+        console.error('Lỗi API getSessionHistory:', error);
+        return res.status(500).json({
+            status: 'error',
+            message: 'Lỗi hệ thống khi lấy lịch sử phỏng vấn',
+            error: error.message
+        });
+    }
+};
+
 // GET /api/v1/sessions/:id/questions
 const getSessionQuestions = async (req, res) => {
     try {
@@ -279,11 +374,10 @@ const finishSession = async (req, res) => {
 // GET /api/v1/sessions/:id/result (FR-10: Kết quả đánh giá chi tiết)
 const getSessionResult = async (req, res) => {
     try {
-        const userId = req.user.id;
+        const { id: userId, role } = req.user;
         const sessionId = req.params.id;
 
-        const [sessions] = await db.query(
-            `SELECT 
+        let sql = `SELECT 
                 s.id AS session_id,
                 s.status,
                 s.total_questions,
@@ -294,9 +388,15 @@ const getSessionResult = async (req, res) => {
                 jp.level AS position_level
              FROM interview_sessions s
              INNER JOIN job_positions jp ON s.position_id = jp.id
-             WHERE s.id = ? AND s.user_id = ?`,
-            [sessionId, userId]
-        );
+             WHERE s.id = ?`;
+        const params = [sessionId];
+
+        if (role !== 'ADMIN') {
+            sql += ' AND s.user_id = ?';
+            params.push(userId);
+        }
+
+        const [sessions] = await db.query(sql, params);
 
         if (sessions.length === 0) {
             return res.status(404).json({
@@ -392,6 +492,7 @@ const getSessionResult = async (req, res) => {
 
 module.exports = {
     createSession,
+    getSessionHistory,
     getSessionQuestions,
     submitAnswer,
     finishSession,
