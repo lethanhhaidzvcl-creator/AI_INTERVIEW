@@ -1,9 +1,9 @@
-import { Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { getCurrentUser } from '../services/authStorage.js';
+import { createSession, getPositions } from '../services/interviewService.js';
 import '../styles/InterviewSetup.css';
 
-const positions = ['Frontend Developer', 'Backend Developer'];
-const levels = ['Fresher', 'Junior'];
 const questionCounts = [3, 5, 10];
 
 function OptionGroup({ title, name, options, selected, onChange, suffix = '' }) {
@@ -29,76 +29,153 @@ function OptionGroup({ title, name, options, selected, onChange, suffix = '' }) 
 }
 
 export default function InterviewSetup() {
-  const [config, setConfig] = useState({
-    position: positions[0],
-    level: levels[0],
-    count: questionCounts[0],
-  });
+  const navigate = useNavigate();
+  const [catalog, setCatalog] = useState(null);
+  const [positionName, setPositionName] = useState('');
+  const [levelName, setLevelName] = useState('');
+  const [count, setCount] = useState(questionCounts[0]);
   const [confirmed, setConfirmed] = useState(false);
+  const [catalogError, setCatalogError] = useState('');
+  const [startError, setStartError] = useState('');
+  const [isStarting, setIsStarting] = useState(false);
+  const [catalogAttempt, setCatalogAttempt] = useState(0);
+  const starting = useRef(false);
 
-  function updateOption(name, value) {
-    setConfig((current) => ({ ...current, [name]: value }));
+  useEffect(() => {
+    const controller = new AbortController();
+
+    getPositions(controller.signal).then(
+      setCatalog,
+      (error) => {
+        if (!controller.signal.aborted) setCatalogError(error.message);
+      },
+    );
+
+    return () => controller.abort();
+  }, [catalogAttempt]);
+
+  const positions = [...new Set((catalog ?? []).map((item) => item.name))];
+  const selectedName = positionName || positions[0];
+  const matchingPositions = (catalog ?? []).filter((item) => item.name === selectedName);
+  const levels = [...new Set(matchingPositions.map((item) => item.level))];
+  const position = matchingPositions.find((item) => item.level === levelName)
+    ?? matchingPositions[0];
+
+  function changeOption(setValue, value) {
+    setValue(value);
     setConfirmed(false);
+    setStartError('');
   }
 
-  function handleSubmit(event) {
+  function confirmSetup(event) {
     event.preventDefault();
     setConfirmed(true);
+  }
+
+  function retryCatalog() {
+    setCatalogError('');
+    setCatalogAttempt((attempt) => attempt + 1);
+  }
+
+  async function startInterview() {
+    if (!position || starting.current) return;
+
+    if (!getCurrentUser()) {
+      navigate('/login');
+      return;
+    }
+
+    starting.current = true;
+    setIsStarting(true);
+    setStartError('');
+
+    try {
+      const session = await createSession(position.id, count);
+      navigate('/interview/room', { state: { sessionId: session.sessionId } });
+    } catch (error) {
+      setStartError(error.message);
+    } finally {
+      starting.current = false;
+      setIsStarting(false);
+    }
   }
 
   return (
     <main className="interview-setup">
       <div className="interview-setup__container">
-        <a className="interview-setup__back" href="/">← Về trang chủ</a>
+        <Link className="interview-setup__back" to="/">← Về trang chủ</Link>
         <h1>Cấu hình buổi phỏng vấn</h1>
         <p>Chọn vị trí ứng tuyển, cấp độ và số câu hỏi cho buổi luyện tập.</p>
 
-        <form className="interview-setup__layout" onSubmit={handleSubmit}>
-          <div className="interview-setup__panel">
-            <OptionGroup
-              title="Vị trí ứng tuyển"
-              name="position"
-              options={positions}
-              selected={config.position}
-              onChange={(value) => updateOption('position', value)}
-            />
-            <OptionGroup
-              title="Cấp độ"
-              name="level"
-              options={levels}
-              selected={config.level}
-              onChange={(value) => updateOption('level', value)}
-            />
-            <OptionGroup
-              title="Số lượng câu hỏi"
-              name="count"
-              options={questionCounts}
-              selected={config.count}
-              onChange={(value) => updateOption('count', value)}
-              suffix=" câu"
-            />
+        {!catalog && !catalogError && <p role="status">Đang tải vị trí ứng tuyển…</p>}
+
+        {catalogError && (
+          <div>
+            <p role="alert">{catalogError}</p>
+            <button type="button" onClick={retryCatalog}>Tải lại vị trí</button>
           </div>
+        )}
 
-          <aside className="interview-setup__summary" aria-labelledby="summary-title">
-            <h2 id="summary-title">Tóm tắt buổi phỏng vấn</h2>
-            <dl>
-              <div><dt>Vị trí</dt><dd>{config.position}</dd></div>
-              <div><dt>Cấp độ</dt><dd>{config.level}</dd></div>
-              <div><dt>Số câu hỏi</dt><dd>{config.count} câu</dd></div>
-            </dl>
-                        <button type="submit">Xác nhận cấu hình</button>
+        {catalog?.length === 0 && <p>Chưa có vị trí ứng tuyển để luyện tập.</p>}
 
-            <div className="interview-setup__status" role="status">
-              {confirmed && 'Đã xác nhận cấu hình.'}
-            </div>
+        {position && (
+          <form className="interview-setup__layout" onSubmit={confirmSetup}>
+            <fieldset className="interview-setup__panel" disabled={isStarting}>
+              <OptionGroup
+                title="Vị trí ứng tuyển"
+                name="position"
+                options={positions}
+                selected={selectedName}
+                onChange={(value) => {
+                  setLevelName('');
+                  changeOption(setPositionName, value);
+                }}
+              />
+              <OptionGroup
+                title="Cấp độ"
+                name="level"
+                options={levels}
+                selected={position.level}
+                onChange={(value) => changeOption(setLevelName, value)}
+              />
+              <OptionGroup
+                title="Số lượng câu hỏi"
+                name="count"
+                options={questionCounts}
+                selected={count}
+                onChange={(value) => changeOption(setCount, value)}
+                suffix=" câu"
+              />
+            </fieldset>
 
-            {confirmed && (
-            <Link className="interview-setup__room-link" to="/interview/room" state={{ count: config.count }}>
-                Vào phòng phỏng vấn →
-            </Link>
-            )}
-          </aside>
-        </form>
+            <aside className="interview-setup__summary" aria-labelledby="summary-title">
+              <h2 id="summary-title">Tóm tắt buổi phỏng vấn</h2>
+              <dl>
+                <div><dt>Vị trí</dt><dd>{position.name}</dd></div>
+                <div><dt>Cấp độ</dt><dd>{position.level}</dd></div>
+                <div><dt>Số câu hỏi</dt><dd>{count} câu</dd></div>
+              </dl>
+
+              <button type="submit" disabled={isStarting}>Xác nhận cấu hình</button>
+              <div className="interview-setup__status" role="status">
+                {confirmed && 'Đã xác nhận cấu hình.'}
+              </div>
+
+              {confirmed && (
+                <button
+                  className="interview-setup__room-link"
+                  type="button"
+                  onClick={startInterview}
+                  disabled={isStarting}
+                >
+                  {isStarting ? 'Đang tạo phiên…' : 'Vào phòng phỏng vấn →'}
+                </button>
+              )}
+
+              {startError && <p role="alert">{startError}</p>}
+            </aside>
+          </form>
+        )}
       </div>
     </main>
   );
