@@ -109,3 +109,35 @@
   color: #475569;
   cursor: default;
 }
+
+.interview-room__typing {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #475569;
+}
+
+.interview-room__typing-dots {
+  color: #4f46e5;
+  font-size: 9px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .interview-room__typing-dots {
+    animation: interview-room-pulse 750ms ease-in-out infinite alternate;
+  }
+
+  .interview-room__bubble--current {
+    animation: interview-room-enter 220ms ease-out both;
+  }
+}
+
+@keyframes interview-room-pulse {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+
+@keyframes interview-room-enter {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
