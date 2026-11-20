@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import '../styles/InterviewRoom.css';
 
 const questionCounts = [3, 5, 10];
+const demoResponseDelay = 900;
 
 const questionBank = [
   'Bạn hãy giới thiệu ngắn gọn về bản thân và kinh nghiệm lập trình của mình.',
@@ -21,6 +22,12 @@ export default function InterviewRoom() {
   const { state } = useLocation();
   const [answers, setAnswers] = useState([]);
   const [draft, setDraft] = useState('');
+  const [pendingAnswer, setPendingAnswer] = useState('');
+  const responseTimer = useRef(null);
+
+  useEffect(() => {
+    return () => window.clearTimeout(responseTimer.current);
+  }, []);
 
   const requestedCount = state?.count;
   const questionCount = questionCounts.includes(requestedCount)
@@ -31,15 +38,22 @@ export default function InterviewRoom() {
   const currentIndex = answers.length;
   const finished = currentIndex === questions.length;
   const questionNumber = Math.min(currentIndex + 1, questions.length);
+  const isWaiting = Boolean(pendingAnswer);
 
   function handleSubmit(event) {
     event.preventDefault();
     const answer = draft.trim();
 
-    if (!answer || finished) return;
+    if (!answer || finished || responseTimer.current !== null) return;
 
-    setAnswers((current) => [...current, answer]);
+    setPendingAnswer(answer);
     setDraft('');
+
+    responseTimer.current = window.setTimeout(() => {
+      setAnswers((current) => [...current, answer]);
+      setPendingAnswer('');
+      responseTimer.current = null;
+    }, demoResponseDelay);
   }
 
   return (
@@ -73,7 +87,6 @@ export default function InterviewRoom() {
                 <strong>Người phỏng vấn</strong>
                 <p>{questions[index]}</p>
               </div>
-
               <div className="interview-room__bubble interview-room__bubble--answer">
                 <strong>Bạn</strong>
                 <p>{answer}</p>
@@ -86,10 +99,28 @@ export default function InterviewRoom() {
               Bạn đã trả lời đủ {questions.length} câu hỏi.
             </p>
           ) : (
-            <div className="interview-room__bubble">
+            <div
+              key={currentIndex}
+              className="interview-room__bubble interview-room__bubble--current"
+            >
               <strong>Người phỏng vấn</strong>
               <p>{questions[currentIndex]}</p>
             </div>
+          )}
+
+          {isWaiting && (
+            <>
+              <div className="interview-room__bubble interview-room__bubble--answer">
+                <strong>Bạn</strong>
+                <p>{pendingAnswer}</p>
+              </div>
+              <p className="interview-room__typing" role="status">
+                <span className="interview-room__typing-dots" aria-hidden="true">
+                  ● ● ●
+                </span>
+                Đang chuẩn bị câu hỏi…
+              </p>
+            </>
           )}
         </div>
 
@@ -100,10 +131,11 @@ export default function InterviewRoom() {
               id="interview-answer"
               rows={3}
               value={draft}
+              disabled={isWaiting}
               onChange={(event) => setDraft(event.target.value)}
               placeholder="Nhập câu trả lời..."
             />
-            <button type="submit" disabled={!draft.trim()}>
+            <button type="submit" disabled={isWaiting || !draft.trim()}>
               Gửi câu trả lời
             </button>
           </form>
