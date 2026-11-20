@@ -1,44 +1,44 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config();
 const db = require('./config/db');
 
-// 1. Nhập các router
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const positionRoutes = require('./routes/positionRoutes');
+const sessionRoutes = require('./routes/sessionRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 
 const app = express();
-const port = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
 
-// 2. Nối các route API
-app.use('/api/v1/auth', authRoutes);
-app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/positions', positionRoutes);
-
-// Route kiểm tra kết nối DB sẵn có
-app.get('/api/health', async (req, res) => {
+// Route kiểm tra kết nối server & database
+app.get('/api/v1/health', async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT 1 + 1 AS result');
-        res.json({
-            status: 'ok',
-            message: 'ket noi mysql thanh cong',
-            data: rows
+        await db.query('SELECT 1');
+        res.status(200).json({
+            status: 'success',
+            message: 'Server & Database đang hoạt động bình thường'
         });
     } catch (error) {
-        console.error('loi ket noi mysql:', error.message);
         res.status(500).json({
             status: 'error',
-            message: 'loi ket noi co so du lieu',
+            message: 'Lỗi kết nối Database',
             error: error.message
         });
     }
 });
 
-// 3. Khởi chạy server
-app.listen(port, () => {
-    console.log(`server dang chay tai port ${port}`);
+// Đăng ký các nhóm API
+app.use('/api/v1/auth', authRoutes);
+app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/positions', positionRoutes);
+app.use('/api/v1/sessions', sessionRoutes);
+app.use('/api/v1/admin', adminRoutes);
+
+app.listen(PORT, () => {
+    console.log(`Server đang chạy tại http://localhost:${PORT}`);
 });
