@@ -1,0 +1,257 @@
+.home-page .header {
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  padding: 16px clamp(16px, 4vw, 48px);
+}
+
+.home-page .header h2 {
+  font-size: clamp(20px, 3vw, 25px);
+}
+
+.home-page .home-nav {
+  gap: clamp(12px, 2.5vw, 30px);
+}
+
+.home-nav svg {
+  display: none;
+}
+
+.home-page .auth {
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.home-page .user-name {
+  overflow-wrap: anywhere;
+}
+
+.home-page .auth a,
+.home-page .auth button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.home-page .hero {
+  padding: clamp(48px, 10vw, 120px) 20px;
+}
+
+.home-page .hero h1 {
+  font-size: clamp(30px, 5vw, 46px);
+}
+
+.home-page .features {
+  padding: clamp(44px, 8vw, 90px) clamp(16px, 5vw, 96px);
+}
+
+.home-page .feature-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(12px, 2vw, 25px);
+}
+
+.home-page .feature-list .card {
+  padding: clamp(20px, 3vw, 40px) clamp(14px, 2vw, 25px);
+}
+
+.auth-page .auth-form-section {
+  min-width: 0;
+}
+
+.auth-page .auth-field input {
+  font-size: 16px;
+}
+
+.auth-page .auth-password button {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.interview-setup .interview-setup__panel,
+.interview-setup .interview-setup__summary {
+  min-width: 0;
+  padding: clamp(14px, 3vw, 24px);
+}
+
+.interview-setup__options label,
+.interview-setup__summary dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.interview-setup__options input {
+  flex-shrink: 0;
+}
+
+.interview-setup__options label,
+.interview-setup__summary button,
+.interview-room__form button,
+.interview-history__filter select {
+  min-height: 44px;
+}
+
+.interview-room__messages,
+.interview-room__exchange,
+.interview-room__form {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.interview-history__table-wrap {
+  overflow-x: auto;
+}
+
+.interview-history__table-wrap:focus-visible {
+  outline: 2px solid #4f46e5;
+  outline-offset: -2px;
+}
+
+.interview-history__table th,
+.interview-history__table td {
+  overflow-wrap: anywhere;
+}
+
+.interview-history__table a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+.interview-result .interview-result__chart {
+  height: clamp(220px, 60vw, 290px);
+}
+
+@media (max-width: 768px) {
+  .interview-setup .interview-setup__layout,
+  .interview-result .interview-result__grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .home-page .feature-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .interview-room .interview-room__bubble {
+    max-width: 94%;
+  }
+
+  .interview-room__form button {
+    width: 100%;
+  }
+}
+
+.home-menu-toggle {
+  display: none;
+}
+
+@media (max-width: 390px) {
+  .home-page .header {
+    position: relative;
+    flex-direction: row;
+    justify-content: space-between;
+    gap: 10px 12px;
+  }
+
+  .home-page .header .auth {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .home-menu-toggle {
+    display: inline-grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #f1f5f9;
+    color: #334155;
+    cursor: pointer;
+  }
+
+  .home-page .header .home-nav {
+    display: none;
+    position: absolute;
+    inset: calc(100% + 4px) 12px auto;
+    z-index: 10;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgb(15 23 42 / 12%);
+  }
+
+  .home-menu-toggle[aria-expanded="true"] + .home-nav {
+    display: flex;
+  }
+
+  .home-page .home-nav a {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 8px 12px;
+    border-radius: 8px;
+  }
+
+  .home-page .home-nav a:hover,
+  .home-page .home-nav a:focus-visible {
+    background: #eef2ff;
+  }
+}
+
+.home-page .home-nav .home-menu-logout {
+  display: none;
+}
+
+@media (max-width: 390px) {
+  .home-page .auth .logout-btn {
+    display: none;
+  }
+
+  .home-page .home-nav .home-menu-logout {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 8px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: #b91c1c;
+    font: inherit;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .home-page .home-nav .home-menu-logout:hover,
+  .home-page .home-nav .home-menu-logout:focus-visible {
+    background: #fef2f2;
+  }
+}
+
+.home-page .home-nav .home-menu-user {
+  display: none;
+}
+
+@media (max-width: 390px) {
+  .home-page .header .auth.auth--signed-in {
+    display: none;
+  }
+
+  .home-page .home-nav .home-menu-user {
+    display: block;
+    margin: 0 0 4px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    color: #4f46e5;
+    font-size: 14px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+  }
+}

@@ -40,8 +40,12 @@ function CriteriaRadar({ criteria }) {
               <PolarAngleAxis dataKey="axis" />
               <PolarRadiusAxis domain={[0, 10]} ticks={[0, 2, 4, 6, 8, 10]} />
               <Tooltip
+                contentStyle={{
+                    maxWidth: 'min(14rem, 62vw)',
+                    whiteSpace: 'normal',
+                }}
                 labelFormatter={(axis) =>
-                  data.find((item) => item.axis === String(axis))?.name ?? axis
+                    data.find((item) => item.axis === String(axis))?.name ?? axis
                 }
                 formatter={(score) => [formatScore(Number(score)), 'Điểm']}
               />

@@ -107,7 +107,12 @@ function HistoryList({ userId }) {
           </div>
 
           {visibleSessions.length ? (
-            <div className="interview-history__table-wrap">
+            <div
+                className="interview-history__table-wrap"
+                role="region"
+                aria-label="Bảng lịch sử phỏng vấn"
+                tabIndex={0}
+            >
               <table className="interview-history__table">
                 <thead>
                   <tr>
