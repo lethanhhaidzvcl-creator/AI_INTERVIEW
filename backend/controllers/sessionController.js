@@ -1,51 +1,111 @@
+const { generateInterviewQuestions } = require('../services/aiQuestionService');
 const db = require('../config/db');
 const { evaluateAndSaveSession } = require('../services/aiEvaluationService');
 
 // POST /api/v1/sessions
 const createSession = async (req, res) => {
+    const userId = req.user.id;
+    const { position_id, total_questions = 3 } = req.body ?? {};
+    const questionCount = typeof total_questions === 'string'
+        ? Number(total_questions)
+        : total_questions;
+
+    if (!position_id) {
+        return res.status(400).json({
+            status: 'error',
+            message: 'Vui lòng chọn vị trí ứng tuyển'
+        });
+    }
+
+    if (!Number.isInteger(questionCount) || questionCount < 1 || questionCount > 10) {
+        return res.status(400).json({
+            status: 'error',
+            message: 'Số câu hỏi phải là số nguyên từ 1 đến 10'
+        });
+    }
+
     try {
-        const userId = req.user.id;
-        const { position_id, total_questions } = req.body;
-
-        if (!position_id) {
-            return res.status(400).json({
-                status: 'error',
-                message: 'Vui lòng chọn vị trí ứng tuyển (position_id)'
-            });
-        }
-
         const [positions] = await db.query(
             'SELECT id, name, level FROM job_positions WHERE id = ? AND is_active = TRUE',
             [position_id]
         );
+        const [position] = positions;
 
-        if (positions.length === 0) {
+        if (!position) {
             return res.status(404).json({
                 status: 'error',
                 message: 'Vị trí ứng tuyển không tồn tại hoặc đã ngừng hỗ trợ'
             });
         }
 
-        const numQuestions = total_questions || 3;
-        const initialStatus = 'IN_PROGRESS';
+        let generatedQuestions = [];
+        let bankQuestions = [];
 
-        const [result] = await db.query(
-            'INSERT INTO interview_sessions (user_id, position_id, status, total_questions) VALUES (?, ?, ?, ?)',
-            [userId, position_id, initialStatus, numQuestions]
-        );
-
-        const sessionId = result.insertId;
-
-        const [availableQuestions] = await db.query(
-            'SELECT id FROM questions WHERE position_id = ? AND is_active = TRUE ORDER BY RAND() LIMIT ?',
-            [position_id, Number(numQuestions)]
-        );
-
-        for (let i = 0; i < availableQuestions.length; i++) {
-            await db.query(
-                'INSERT INTO session_questions (session_id, question_id, order_no) VALUES (?, ?, ?)',
-                [sessionId, availableQuestions[i].id, i + 1]
+        try {
+            generatedQuestions = await generateInterviewQuestions(
+                position.name,
+                position.level,
+                questionCount
             );
+        } catch (error) {
+            console.warn('Không thể sinh câu hỏi bằng Gemini:', error.message);
+
+            [bankQuestions] = await db.query(
+                `SELECT id FROM questions
+                 WHERE position_id = ? AND is_active = TRUE
+                 ORDER BY RAND() LIMIT ?`,
+                [position.id, questionCount]
+            );
+
+            if (bankQuestions.length < questionCount) {
+                return res.status(503).json({
+                    status: 'error',
+                    message: 'Chưa đủ câu hỏi để bắt đầu. Vui lòng thử lại sau.'
+                });
+            }
+        }
+
+        const initialStatus = 'IN_PROGRESS';
+        const connection = await db.getConnection();
+        let sessionId;
+
+        try {
+            await connection.beginTransaction();
+
+            const [session] = await connection.execute(
+                `INSERT INTO interview_sessions
+                    (user_id, position_id, status, total_questions)
+                 VALUES (?, ?, ?, ?)`,
+                [userId, position.id, initialStatus, questionCount]
+            );
+            sessionId = session.insertId;
+
+            const questionIds = bankQuestions.map((question) => question.id);
+
+            for (const question of generatedQuestions) {
+                const [savedQuestion] = await connection.execute(
+                    `INSERT INTO questions
+                        (position_id, content, sample_answer, is_active)
+                     VALUES (?, ?, ?, FALSE)`,
+                    [position.id, question.content, question.sample_answer]
+                );
+                questionIds.push(savedQuestion.insertId);
+            }
+
+            for (const [index, questionId] of questionIds.entries()) {
+                await connection.execute(
+                    `INSERT INTO session_questions (session_id, question_id, order_no)
+                     VALUES (?, ?, ?)`,
+                    [sessionId, questionId, index + 1]
+                );
+            }
+
+            await connection.commit();
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
         }
 
         return res.status(201).json({
@@ -54,17 +114,17 @@ const createSession = async (req, res) => {
             data: {
                 sessionId,
                 userId,
-                position: positions[0],
+                position,
                 status: initialStatus,
-                total_questions: availableQuestions.length
+                total_questions: questionCount,
+                question_source: generatedQuestions.length ? 'gemini' : 'question_bank'
             }
         });
     } catch (error) {
         console.error('Lỗi API createSession:', error);
         return res.status(500).json({
             status: 'error',
-            message: 'Lỗi hệ thống khi tạo phiên phỏng vấn',
-            error: error.message
+            message: 'Lỗi hệ thống khi tạo phiên phỏng vấn'
         });
     }
 };
