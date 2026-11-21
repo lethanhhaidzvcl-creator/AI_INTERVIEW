@@ -68,3 +68,8 @@ export function finishSession(sessionId) {
 export function getSessionResult(sessionId, signal) {
   return request(`/sessions/${encodeURIComponent(sessionId)}/result`, { signal });
 }
+
+export function getSessionHistory(userId, signal) {
+  const query = new URLSearchParams({ user_id: userId });
+  return request(`/sessions/history?${query}`, { signal });
+}

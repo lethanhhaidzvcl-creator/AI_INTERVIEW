@@ -86,6 +86,53 @@ function Feedback({ title, criteria, field }) {
   );
 }
 
+function renderInlineCode(text = '') {
+  return text.split(/(`[^`\n]+`)/g).map((part, index) =>
+    index % 2 ? <code key={index}>{part.slice(1, -1)}</code> : part,
+  );
+}
+
+function QuestionReviews({ items }) {
+  return (
+    <section
+      className="interview-result__card interview-result__questions"
+      aria-labelledby="result-questions"
+    >
+      <h2 id="result-questions">Xem lại câu hỏi và câu trả lời</h2>
+
+      <div className="question-review-list">
+        {items.map((item) => (
+          <details className="question-review" key={item.order_no}>
+            <summary className="question-review__summary">
+              <span className="question-review__number">Câu {item.order_no}</span>
+              <span>{renderInlineCode(item.question_content)}</span>
+              <span className="question-review__chevron" aria-hidden="true" />
+            </summary>
+
+            <div className="question-review__body">
+              <div className="question-review__answer">
+                <h3>Câu trả lời của bạn</h3>
+                <p>
+                  {renderInlineCode(
+                    item.candidate_answer?.trim() || 'Chưa có câu trả lời.',
+                  )}
+                </p>
+              </div>
+
+              {item.suggested_answer?.trim() && (
+                <div className="question-review__answer question-review__answer--reference">
+                  <h3>Đáp án tham khảo</h3>
+                  <p>{renderInlineCode(item.suggested_answer)}</p>
+                </div>
+              )}
+            </div>
+          </details>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function InterviewResult() {
   const { sessionId } = useParams();
   const [request, setRequest] = useState(null);
@@ -118,10 +165,15 @@ export default function InterviewResult() {
   const result = currentRequest?.data;
   const criteria = result?.criteria_evaluations ?? [];
   const position = result?.session?.position;
+  const questionReviews = result?.questions_review ?? [];
 
   return (
     <main className="interview-result">
-      <Link to="/interview">← Về màn hình cấu hình</Link>
+      <nav className="interview-result__navigation" aria-label="Điều hướng kết quả">
+        <Link to="/interview">← Về màn hình cấu hình</Link>
+        <Link to="/interview/history">Lịch sử phỏng vấn</Link>
+      </nav>
+
       <h1>Kết quả phỏng vấn</h1>
 
       {!currentRequest && <p role="status">Đang tải kết quả…</p>}
@@ -182,6 +234,8 @@ export default function InterviewResult() {
               field="weakness"
             />
           </div>
+
+          {questionReviews.length > 0 && <QuestionReviews items={questionReviews} />}
         </>
       )}
     </main>

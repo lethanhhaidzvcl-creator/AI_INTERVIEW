@@ -28,6 +28,7 @@ function Home() {
           <a href="#home">Trang chủ</a>
           <a href="#features">Tính năng</a>
           <a href="#footer">Liên hệ</a>
+          {currentUser && <Link to="/interview/history">Lịch sử phỏng vấn</Link>}
         </nav>
 
         <div className="auth">

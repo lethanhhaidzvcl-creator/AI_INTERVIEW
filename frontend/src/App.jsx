@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import InterviewHistory from './pages/InterviewHistory.jsx';
 
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -18,6 +19,7 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/interview" element={<InterviewSetup />} />
         <Route path="/interview/room" element={<InterviewRoom />} />
+        <Route path="/interview/history" element={<InterviewHistory />} />
         <Route
           path="/interview/results/:sessionId"
           element={

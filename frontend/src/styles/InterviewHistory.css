@@ -1,0 +1,83 @@
+.interview-history {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 36px 20px 60px;
+  color: #17213b;
+}
+
+.interview-history h1 {
+  margin: 14px 0 24px;
+  font-size: clamp(28px, 5vw, 40px);
+}
+
+.interview-history a {
+  color: #4338ca;
+  font-weight: 700;
+}
+
+.interview-history__card {
+  padding: clamp(16px, 3vw, 24px);
+  border: 1px solid #dbe2ef;
+  border-radius: 16px;
+  background: #fff;
+}
+
+.interview-history__filter {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 18px;
+}
+
+.interview-history__filter label {
+  font-weight: 700;
+}
+
+.interview-history__filter select {
+  width: min(100%, 340px);
+  min-height: 40px;
+  padding: 8px;
+  border: 1px solid #a5b0c5;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+
+.interview-history__table-wrap {
+  overflow-x: auto;
+}
+
+.interview-history__table {
+  width: 100%;
+  min-width: 590px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.interview-history__table th,
+.interview-history__table td {
+  padding: 12px 8px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.interview-history__table thead {
+  background: #f5f6ff;
+}
+
+.interview-history__table th span {
+  display: block;
+  color: #475569;
+  font-size: 0.875rem;
+  font-weight: 400;
+}
+
+.interview-history__card button {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: #4338ca;
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
