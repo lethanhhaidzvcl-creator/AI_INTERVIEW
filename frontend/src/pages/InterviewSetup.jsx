@@ -168,7 +168,8 @@ export default function InterviewSetup() {
                   onClick={startInterview}
                   disabled={isStarting}
                 >
-                  {isStarting ? 'Đang tạo phiên…' : 'Vào phòng phỏng vấn →'}
+                  <span>{isStarting ? 'Đang tạo phiên…' : 'Vào phòng phỏng vấn'}</span>
+                  {!isStarting && <span aria-hidden="true">→</span>}
                 </button>
               )}
 
