@@ -1,10 +1,13 @@
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+
+import Home from './pages/Home';
+import Login from './pages/Login';
+import Register from './pages/Register';
 import InterviewRoom from './pages/InterviewRoom.jsx';
 import InterviewSetup from './pages/InterviewSetup.jsx';
-import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import Home from "./pages/Home";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
+const InterviewResult = lazy(() => import('./pages/InterviewResult.jsx'));
 
 function App() {
   return (
@@ -15,6 +18,14 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/interview" element={<InterviewSetup />} />
         <Route path="/interview/room" element={<InterviewRoom />} />
+        <Route
+          path="/interview/results/:sessionId"
+          element={
+            <Suspense fallback={<p role="status">Đang mở trang kết quả…</p>}>
+              <InterviewResult />
+            </Suspense>
+          }
+        />
       </Routes>
     </BrowserRouter>
   );

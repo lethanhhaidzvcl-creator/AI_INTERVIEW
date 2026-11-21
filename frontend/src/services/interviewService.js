@@ -64,3 +64,7 @@ export function submitAnswer(sessionId, questionId, text) {
 export function finishSession(sessionId) {
   return request(`/sessions/${sessionId}/finish`, { method: 'POST' });
 }
+
+export function getSessionResult(sessionId, signal) {
+  return request(`/sessions/${encodeURIComponent(sessionId)}/result`, { signal });
+}

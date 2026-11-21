@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   finishSession,
   getSessionQuestions,
@@ -36,13 +36,14 @@ function InterviewScoringWait() {
 }
 
 export default function InterviewRoom() {
+  const navigate = useNavigate();
   const { state } = useLocation();
   const sessionId = state?.sessionId;
+
   const [session, setSession] = useState(null);
   const [answers, setAnswers] = useState([]);
   const [draft, setDraft] = useState('');
   const [pendingAnswer, setPendingAnswer] = useState('');
-  const [evaluation, setEvaluation] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -109,9 +110,8 @@ export default function InterviewRoom() {
     setActionError('');
 
     try {
-      const result = await finishSession(sessionId);
-      setEvaluation(result.evaluation);
-      setSession((current) => ({ ...current, status: result.status }));
+      await finishSession(sessionId);
+      navigate(`/interview/results/${sessionId}`, { replace: true });
     } catch (error) {
       setActionError(error.message);
     } finally {
@@ -174,12 +174,7 @@ export default function InterviewRoom() {
             {completed && (
               <div className="interview-room__done">
                 <p>Đã nộp bài thành công.</p>
-                {evaluation && (
-                  <>
-                    <p>Điểm tổng: {evaluation.overall_score}/10</p>
-                    <p>{evaluation.summary_feedback}</p>
-                  </>
-                )}
+                <Link to={`/interview/results/${sessionId}`}>Xem kết quả</Link>
               </div>
             )}
 
