@@ -141,3 +141,49 @@
   from { opacity: 0; transform: translateY(5px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.interview-room--scoring {
+  display: grid;
+  min-height: 70vh;
+  place-items: center;
+}
+
+.interview-scoring {
+  width: min(100%, 540px);
+  padding: clamp(24px, 6vw, 44px);
+  border: 1px solid #dbe2ef;
+  border-radius: 20px;
+  background: #f5f6ff;
+  text-align: center;
+}
+
+.interview-scoring h1 {
+  margin: 16px 0 10px;
+  font-size: clamp(24px, 5vw, 32px);
+}
+
+.interview-scoring p {
+  color: #475569;
+  line-height: 1.55;
+}
+
+.interview-scoring__spinner {
+  display: inline-block;
+  width: 42px;
+  height: 42px;
+  border: 4px solid #c7d2fe;
+  border-top-color: #4338ca;
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .interview-scoring__spinner {
+    animation: interview-scoring-spin 800ms linear infinite;
+  }
+}
+
+@keyframes interview-scoring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

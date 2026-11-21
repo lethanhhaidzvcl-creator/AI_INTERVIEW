@@ -7,6 +7,34 @@ import {
 } from '../services/interviewService.js';
 import '../styles/InterviewRoom.css';
 
+const estimatedScoringSeconds = 15;
+
+function InterviewScoringWait() {
+  const [isTakingLonger, setIsTakingLonger] = useState(false);
+
+  useEffect(() => {
+    const reminder = window.setTimeout(() => {
+      setIsTakingLonger(true);
+    }, estimatedScoringSeconds * 1000);
+
+    return () => window.clearTimeout(reminder);
+  }, []);
+
+  return (
+    <main className="interview-room interview-room--scoring">
+      <section className="interview-scoring" aria-labelledby="interview-scoring-title">
+        <span className="interview-scoring__spinner" aria-hidden="true" />
+        <h1 id="interview-scoring-title">Đang phân tích kết quả</h1>
+        <p role="status">
+          {isTakingLonger
+            ? 'AI đang xử lý lâu hơn dự kiến. Kết quả sẽ hiện khi có phản hồi.'
+            : `Thời gian ước tính khoảng ${estimatedScoringSeconds} giây. Kết quả sẽ tự hiện khi chấm xong.`}
+        </p>
+      </section>
+    </main>
+  );
+}
+
 export default function InterviewRoom() {
   const { state } = useLocation();
   const sessionId = state?.sessionId;
@@ -91,6 +119,8 @@ export default function InterviewRoom() {
       setIsSubmitting(false);
     }
   }
+
+  if (isSubmitting) return <InterviewScoringWait />;
 
   return (
     <main className="interview-room">
@@ -200,7 +230,6 @@ export default function InterviewRoom() {
 
           {canFinish && (
             <div className="interview-room__form">
-              {isSubmitting && <p role="status">Đang chờ AI đánh giá bài phỏng vấn…</p>}
               <button type="button" disabled={busy} onClick={handleFinish}>
                 {actionError ? 'Thử nộp lại' : 'Nộp bài'}
               </button>
