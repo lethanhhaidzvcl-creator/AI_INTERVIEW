@@ -1,37 +1,71 @@
-
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { getCurrentUser, logoutUser } from "../services/authStorage";
-import "../App.css";
+import { Menu, X } from 'lucide-react';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { getCurrentUser, logoutUser } from '../services/authStorage';
+import '../App.css';
 
 function Home() {
   const navigate = useNavigate();
+  const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const [currentUser, setCurrentUser] = useState(
-    () => getCurrentUser()
-  );
+  function closeMenu() {
+    setMenuOpen(false);
+  }
 
-  // Xử lý đăng xuất
   function handleLogout() {
     logoutUser();
     setCurrentUser(null);
-    navigate("/login");
+    closeMenu();
+    navigate('/login');
   }
 
   return (
-    <>
-      {/* HEADER */}
+    <div className="home-page">
       <header className="header">
         <h2>🤖 AI Interview</h2>
 
-        <nav>
-          <a href="#home">Trang chủ</a>
-          <a href="#features">Tính năng</a>
-          <a href="#footer">Liên hệ</a>
-          {currentUser && <Link to="/interview/history">Lịch sử phỏng vấn</Link>}
+        <button
+          type="button"
+          className="home-menu-toggle"
+          aria-label={menuOpen ? 'Đóng menu' : 'Mở menu'}
+          aria-expanded={menuOpen}
+          aria-controls="home-navigation"
+          onClick={() => setMenuOpen((open) => !open)}
+        >
+          {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+        </button>
+
+        <nav
+          id="home-navigation"
+          className="home-nav"
+          aria-label="Điều hướng chính"
+        >
+          {currentUser && (
+            <p className="home-menu-user">Xin chào, {currentUser.full_name}</p>
+          )}
+          <a href="#home" onClick={closeMenu}>Trang chủ</a>
+          <a href="#features" onClick={closeMenu}>Tính năng</a>
+          <a href="#footer" onClick={closeMenu}>Liên hệ</a>
+
+          {currentUser && (
+            <Link to="/interview/history" onClick={closeMenu}>
+              Lịch sử phỏng vấn
+            </Link>
+          )}
+
+          {currentUser && (
+            <button
+              type="button"
+              className="home-menu-logout"
+              onClick={handleLogout}
+            >
+              Đăng xuất
+            </button>
+          )}
         </nav>
 
-        <div className="auth">
+        <div className={currentUser ? 'auth auth--signed-in' : 'auth'}>
           {currentUser ? (
             <>
               <span className="user-name">
@@ -55,7 +89,6 @@ function Home() {
         </div>
       </header>
 
-      {/* TRANG CHỦ */}
       <main>
         <section className="hero" id="home">
           <h1>Luyện phỏng vấn cùng AI</h1>
@@ -64,10 +97,7 @@ function Home() {
             Thực hành, nhận đánh giá và cải thiện mỗi ngày.
           </p>
 
-          <Link
-            to={currentUser ? "/interview" : "/login"}
-            className="btn"
-          >
+          <Link to={currentUser ? '/interview' : '/login'} className="btn">
             Bắt đầu phỏng vấn
           </Link>
         </section>
@@ -94,13 +124,12 @@ function Home() {
         </section>
       </main>
 
-      {/* FOOTER */}
       <footer id="footer">
         <h3>AI Interview</h3>
         <p>Nền tảng luyện phỏng vấn thông minh</p>
         <p>© 2026 AI Interview</p>
       </footer>
-    </>
+    </div>
   );
 }
 
