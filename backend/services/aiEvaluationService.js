@@ -7,18 +7,22 @@ const fetchWithTimeout = async (url, options, timeoutMs = AI_TIMEOUT_MS) => {
     const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
     try {
-        const response = await fetch(url, {
+        return await fetch(url, {
             ...options,
             signal: controller.signal
         });
-        return response;
     } catch (error) {
         if (error.name === 'AbortError') {
-            const timeoutErr = new Error(`Yêu cầu chấm điểm AI vượt quá thời gian chờ (${timeoutMs / 1000}s)`);
+            const timeoutErr = new Error(
+                `Yêu cầu chấm điểm AI vượt quá thời gian chờ (${timeoutMs / 1000}s)`
+            );
             timeoutErr.code = 'AI_TIMEOUT';
             throw timeoutErr;
         }
-        const networkErr = new Error(`Không thể kết nối tới dịch vụ AI: ${error.message}`);
+
+        const networkErr = new Error(
+            `Không thể kết nối tới dịch vụ AI: ${error.message}`
+        );
         networkErr.code = 'AI_NETWORK_ERROR';
         throw networkErr;
     } finally {
@@ -28,17 +32,26 @@ const fetchWithTimeout = async (url, options, timeoutMs = AI_TIMEOUT_MS) => {
 
 const evaluateWithAI = async (positionName, level, qaList, simulateError = false) => {
     if (simulateError) {
-        const simErr = new Error('Dịch vụ AI tạm thời gián đoạn hoặc quá thời gian phản hồi (Simulated Timeout)');
+        const simErr = new Error(
+            'Dịch vụ AI tạm thời gián đoạn hoặc quá thời gian phản hồi (Simulated Timeout)'
+        );
         simErr.code = 'AI_TIMEOUT';
         throw simErr;
     }
 
-    const apiKey = process.env.OPENAI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY?.trim();
 
-    if (apiKey && apiKey.trim() !== '') {
+    if (apiKey) {
         const prompt = `Bạn là chuyên gia phỏng vấn kỹ thuật cho vị trí ${positionName} (${level}).
 Hãy đánh giá danh sách câu hỏi và câu trả lời của ứng viên dưới đây:
 ${JSON.stringify(qaList, null, 2)}
+
+Quy tắc chấm:
+- Chấm dựa trên độ đúng và mức liên quan của câu trả lời. Độ dài không tự làm tăng điểm.
+- Câu trả lời vô nghĩa, lạc đề, trống hoặc chỉ gồm ký tự ngẫu nhiên được 0 điểm cho câu đó.
+- Nếu tất cả câu trả lời thuộc các trường hợp trên, overall_score và score của từng tiêu chí phải bằng 0.
+- Nhận xét phải dựa trên nội dung thực tế. Nếu chưa có điểm mạnh, ghi rõ chưa thể hiện điểm mạnh.
+- Dùng thang điểm từ 0 đến 10.
 
 Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo đúng cấu trúc:
 {
@@ -62,40 +75,56 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo
   ]
 }`;
 
-        const response = await fetchWithTimeout('https://api.openai.com/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
-            },
-            body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages: [{ role: 'user', content: prompt }],
-                temperature: 0.3
-            })
-        });
+        const response = await fetchWithTimeout(
+            'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: 'Bearer ' + apiKey
+                },
+                body: JSON.stringify({
+                    model: process.env.GEMINI_MODEL?.trim() || 'gemini-3.5-flash-lite',
+                    messages: [{ role: 'user', content: prompt }],
+                    temperature: 0.3
+                })
+            }
+        );
 
         if (!response.ok) {
-            const apiErr = new Error(`LLM trả về mã lỗi HTTP ${response.status}`);
+            const apiErr = new Error(
+                `Gemini trả về mã lỗi HTTP ${response.status}`
+            );
             apiErr.code = 'AI_PROVIDER_ERROR';
             throw apiErr;
         }
 
         const data = await response.json();
         const rawText = data?.choices?.[0]?.message?.content?.trim();
+
         if (!rawText) {
             const parseErr = new Error('Phản hồi từ AI rỗng hoặc sai định dạng');
             parseErr.code = 'AI_INVALID_RESPONSE';
             throw parseErr;
         }
 
-        const cleanJson = rawText.replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+        const cleanJson = rawText
+            .replace(/^```json\s*/i, '')
+            .replace(/```$/i, '')
+            .trim();
+
         return JSON.parse(cleanJson);
     }
 
-    const answeredCount = qaList.filter(item => item.answer_text && item.answer_text.trim().length > 0).length;
+    const answeredCount = qaList.filter(
+        (item) => item.answer_text && item.answer_text.trim().length > 0
+    ).length;
+
     const avgLength = answeredCount > 0
-        ? qaList.reduce((sum, item) => sum + (item.answer_text ? item.answer_text.trim().length : 0), 0) / qaList.length
+        ? qaList.reduce(
+            (sum, item) => sum + (item.answer_text ? item.answer_text.trim().length : 0),
+            0
+        ) / qaList.length
         : 0;
 
     let baseScore = 5.0;
@@ -128,7 +157,7 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo
 
 const evaluateAndSaveSession = async (sessionId, options = {}) => {
     const [sessionRows] = await db.query(
-        `SELECT s.id, jp.name AS position_name, jp.level 
+        `SELECT s.id, jp.name AS position_name, jp.level
          FROM interview_sessions s
          INNER JOIN job_positions jp ON s.position_id = jp.id
          WHERE s.id = ?`,
@@ -159,6 +188,7 @@ const evaluateAndSaveSession = async (sessionId, options = {}) => {
     );
 
     await db.query('DELETE FROM evaluations WHERE session_id = ?', [sessionId]);
+
     for (const item of evaluationResult.details) {
         await db.query(
             `INSERT INTO evaluations (session_id, criterion_name, score, strength, weakness, suggestion)
