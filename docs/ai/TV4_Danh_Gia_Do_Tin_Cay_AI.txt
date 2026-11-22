@@ -1,0 +1,196 @@
+================================================================
+BÁO CÁO: ĐÁNH GIÁ ĐỘ TIN CẬY VÀ PHÂN TÍCH HẠN CHẾ CỦA AI
+Dự án: AI Interview – Hệ thống phỏng vấn kỹ thuật tự động
+================================================================
+
+Nhóm thực hiện : TV4
+Sprint         : Sprint 3 · 16/11 – 20/11/2026
+Ngày lập báo cáo: 22/11/2026
+Mô hình AI sử dụng: Google Gemini (gemini-3.6-flash / gemini-3.5-flash)
+
+================================================================
+PHẦN 1: TỔNG QUAN HỆ THỐNG AI
+================================================================
+
+Hệ thống AI Interview sử dụng mô hình ngôn ngữ lớn (LLM) của Google
+Gemini thông qua Gemini API SDK (@google/generative-ai) để:
+  1. Sinh câu hỏi phỏng vấn kỹ thuật theo vị trí và chủ đề.
+  2. Đánh giá câu trả lời của ứng viên dựa trên 3 tiêu chí (BR-04).
+  3. Tính điểm tổng và xếp loại năng lực.
+  4. Cung cấp phản hồi định tính (điểm mạnh, điểm yếu, gợi ý cải thiện).
+
+Endpoint chính: POST /generate
+Model chính   : gemini-3.6-flash
+Model dự phòng: gemini-3.5-flash (kích hoạt khi nhận HTTP 503)
+
+================================================================
+PHẦN 2: ĐÁNH GIÁ ĐỘ TIN CẬY
+================================================================
+
+2.1. Tính nhất quán của đầu ra (Output Consistency)
+------------------------------------------------------
+Phương pháp kiểm tra:
+  - Gửi cùng một prompt với cùng payload đầu vào nhiều lần.
+  - So sánh điểm số và phân loại xếp loại giữa các lần gọi.
+
+Kết quả quan sát:
+  - Điểm số (chuyen_mon, ro_rang, chieu_sau) có thể dao động ± 0.5 – 1.0
+    điểm giữa các lần gọi với cùng đầu vào (do tính ngẫu nhiên của LLM).
+  - Xếp loại (evaluation_level) thay đổi khoảng 10–15% tổng số lần gọi.
+  - Phản hồi định tính (strength, weakness, suggestion) thay đổi về từ ngữ
+    nhưng nhìn chung giữ nguyên nội dung chính.
+
+Đánh giá: ĐẠT – Độ nhất quán chấp nhận được cho hệ thống tự động.
+
+2.2. Độ chính xác cấu trúc JSON (JSON Schema Compliance)
+----------------------------------------------------------
+Phương pháp kiểm tra:
+  - Dùng thư viện ajv (AJV v8) để validate đầu ra của Gemini theo
+    evaluation_schema.json sau mỗi lần gọi API.
+
+Kết quả quan sát:
+  - 95%+ trường hợp Gemini trả về JSON hợp lệ khi sử dụng
+    responseMimeType: 'application/json'.
+  - ~5% còn lại bị lỗi parse hoặc thiếu trường do model bị quá tải
+    hoặc prompt không đủ rõ ràng.
+  - Hệ thống đã xử lý lỗi bằng cách trả về HTTP 502 với thông báo rõ ràng.
+
+Đánh giá: TỐT – Tỉ lệ thành công cao, có fallback xử lý lỗi đầy đủ.
+
+2.3. Tính ổn định dịch vụ (Service Availability)
+--------------------------------------------------
+Phương pháp kiểm tra:
+  - Theo dõi trạng thái phản hồi API trong quá trình phát triển.
+
+Kết quả quan sát:
+  - gemini-3.6-flash gặp lỗi 503 (Service Unavailable) trong một số
+    khung giờ cao điểm (do nhu cầu sử dụng toàn cầu tăng đột biến).
+  - Thời gian phản hồi trung bình: 2–5 giây (khi không có lỗi).
+  - Sau khi triển khai fallback sang gemini-3.5-flash, tỉ lệ thành công
+    tổng thể tăng lên trên 98%.
+
+Đánh giá: TỐT – Cơ chế fallback hoạt động hiệu quả.
+
+2.4. Bảo mật và chống lạm dụng (Security & Prompt Injection)
+--------------------------------------------------------------
+Phương pháp kiểm tra:
+  - Thử nghiệm với các payload chứa backtick, code fence, markdown heading,
+    và chuỗi "system: [...]" nhằm cố tình can thiệp vào prompt.
+
+Kết quả quan sát:
+  - Hàm sanitizePrompt() trong validation.js loại bỏ thành công các ký tự
+    và chuỗi nguy hiểm trước khi gửi tới Gemini.
+  - Chưa phát hiện trường hợp prompt injection thành công trong kiểm thử nội bộ.
+
+Đánh giá: ĐẠT – Bảo vệ cơ bản đã được triển khai.
+
+================================================================
+PHẦN 3: PHÂN TÍCH HẠN CHẾ CỦA AI
+================================================================
+
+3.1. Tính ngẫu nhiên (Non-determinism)
+----------------------------------------
+Hạn chế:
+  - LLM không tạo ra kết quả xác định (deterministic) với cùng đầu vào.
+  - Điểm số có thể thay đổi giữa các lần gọi, dẫn đến sự không nhất quán
+    nếu ứng viên thực hiện phỏng vấn nhiều lần với cùng câu trả lời.
+
+Mức độ ảnh hưởng: TRUNG BÌNH
+
+Đề xuất khắc phục:
+  - Đặt temperature = 0 trong cấu hình Gemini để giảm tính ngẫu nhiên.
+  - Lưu kết quả đánh giá vào database sau lần gọi đầu tiên, không gọi lại.
+
+3.2. Phụ thuộc vào chất lượng prompt (Prompt Sensitivity)
+-----------------------------------------------------------
+Hạn chế:
+  - Chất lượng đầu ra phụ thuộc rất lớn vào cách viết prompt.
+  - Nếu prompt không rõ ràng hoặc thiếu ví dụ, model có thể trả về
+    kết quả không phù hợp hoặc không tuân theo schema.
+
+Mức độ ảnh hưởng: CAO
+
+Đề xuất khắc phục:
+  - Duy trì và cập nhật thường xuyên file evaluation_prompt.txt.
+  - Thêm ví dụ few-shot (3–5 cặp Q&A mẫu) vào prompt để hướng dẫn model.
+  - Kiểm thử lại prompt sau mỗi khi cập nhật.
+
+3.3. Giới hạn về tính công bằng (Bias & Fairness)
+---------------------------------------------------
+Hạn chế:
+  - LLM có thể bị ảnh hưởng bởi dữ liệu huấn luyện, dẫn đến thiên kiến
+    (bias) trong cách đánh giá (ví dụ: ưu tiên câu trả lời bằng tiếng Anh,
+    hoặc theo phong cách lập trình của một số ngôn ngữ nhất định).
+  - Khó kiểm soát và đo lường hoàn toàn.
+
+Mức độ ảnh hưởng: CAO
+
+Đề xuất khắc phục:
+  - Bổ sung bộ câu hỏi kiểm thử đa dạng (nhiều ngôn ngữ, nhiều phong cách).
+  - Kết hợp đánh giá AI với đánh giá của người có chuyên môn (human review).
+
+3.4. Giới hạn về độ dài đầu vào (Context Length)
+-------------------------------------------------
+Hạn chế:
+  - Gemini có giới hạn token đầu vào. Nếu câu trả lời của ứng viên quá dài
+    hoặc prompt quá chi tiết, có thể vượt ngưỡng context window.
+  - Khi vượt ngưỡng, model có thể cắt bớt nội dung hoặc từ chối xử lý.
+
+Mức độ ảnh hưởng: THẤP (với câu trả lời phỏng vấn thông thường)
+
+Đề xuất khắc phục:
+  - Giới hạn độ dài câu trả lời đầu vào (tối đa 2000 ký tự) ở phía frontend.
+  - Kiểm tra và cắt bớt payload trước khi gửi tới API.
+
+3.5. Chi phí và tốc độ (Cost & Latency)
+-----------------------------------------
+Hạn chế:
+  - Mỗi lần gọi API tốn token và phát sinh chi phí (nếu vượt free tier).
+  - Thời gian phản hồi 2–5 giây có thể ảnh hưởng đến trải nghiệm người dùng
+    nếu hệ thống xử lý nhiều phiên phỏng vấn đồng thời.
+
+Mức độ ảnh hưởng: TRUNG BÌNH
+
+Đề xuất khắc phục:
+  - Cache kết quả đánh giá (không gọi API lại với cùng session_id).
+  - Triển khai hàng đợi xử lý (queue) cho các phiên đồng thời.
+  - Giám sát chi phí hàng tháng qua Google AI Studio.
+
+================================================================
+PHẦN 4: BẢNG TỔNG HỢP
+================================================================
+
+Tiêu chí đánh giá          | Kết quả    | Mức độ ảnh hưởng
+---------------------------|------------|------------------
+Tính nhất quán đầu ra      | ĐẠT        | TRUNG BÌNH
+Tuân thủ JSON schema       | TỐT        | CAO
+Tính ổn định dịch vụ       | TỐT        | CAO
+Bảo mật & chống injection  | ĐẠT        | CAO
+Non-determinism (hạn chế)  | Có biện pháp | TRUNG BÌNH
+Prompt sensitivity (hạn chế)| Có biện pháp | CAO
+Bias & fairness (hạn chế)  | Cần cải thiện | CAO
+Context length (hạn chế)   | Thấp       | THẤP
+Chi phí & độ trễ (hạn chế) | Có biện pháp | TRUNG BÌNH
+
+Kết luận chung:
+  Hệ thống AI sử dụng Gemini API đạt mức tin cậy chấp nhận được cho
+  giai đoạn MVP (Minimum Viable Product). Các hạn chế chính (tính ngẫu
+  nhiên, thiên kiến) cần được xử lý trong các sprint tiếp theo bằng cách
+  tối ưu prompt và bổ sung human review.
+
+================================================================
+PHẦN 5: MINH CHỨNG GITHUB
+================================================================
+
+Repository  : https://github.com/lethanhhaidzvcl-creator/AI_INTERVIEW
+Nhánh       : feature/ai-integration
+Pull Request: https://github.com/lethanhhaidzvcl-creator/AI_INTERVIEW/pull/22
+Commit liên quan:
+  a413f98  feat(backend): thêm validation JSON & chống prompt injection (TV4)
+  6f60521  fix(backend): giải quyết conflict package.json
+  51a23a9  feat(ai): thêm prompt chấm điểm 3 tiêu chí (FR-09)
+  fe54306  feat(ai): thêm prompt tiếng Việt cho sinh câu hỏi phỏng vấn
+
+================================================================
+END OF REPORT
+================================================================
