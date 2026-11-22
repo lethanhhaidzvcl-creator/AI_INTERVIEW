@@ -1,13 +1,15 @@
 {
   "name": "ai-interview-backend",
   "version": "1.0.0",
-  "description": "backend server for ai mock interview system",
+  "description": "Backend server cho hệ thống phỏng vấn AI – tích hợp Gemini API và xác thực người dùng",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "ajv": "^8.12.0",
+    "@google/generative-ai": "^0.14.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
