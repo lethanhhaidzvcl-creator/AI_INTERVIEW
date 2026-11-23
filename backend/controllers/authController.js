@@ -52,7 +52,7 @@ const register = async (req, res) => {
         // 6. Lưu user vào MySQL (bảng users theo schema.sql)
         const [result] = await db.query(
             'INSERT INTO users (full_name, email, password_hash, role) VALUES (?, ?, ?, ?)',
-            [full_name, email, hashedPassword, 'candidate']
+            [full_name.trim(), email.trim().toLowerCase(), hashedPassword, 'USER']
         );
 
         return res.status(201).json({
@@ -120,7 +120,7 @@ const login = async (req, res) => {
 
         const token = jwt.sign(
             payload,
-            process.env.JWT_SECRET || 'ai_interview_secret_key_2026',
+            process.env.JWT_SECRET,
             { expiresIn: process.env.JWT_EXPIRES_IN || '1d' }
         );
 
