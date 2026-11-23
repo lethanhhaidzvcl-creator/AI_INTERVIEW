@@ -1,4 +1,5 @@
-import { Menu, X } from 'lucide-react';
+
+import { Menu, X, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { getCurrentUser, logoutUser } from '../services/authStorage';
@@ -8,6 +9,9 @@ function Home() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState(() => getCurrentUser());
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Chỉ tài khoản ADMIN được hiển thị nút quản trị
+  const isAdmin = currentUser?.role === 'ADMIN';
 
   function closeMenu() {
     setMenuOpen(false);
@@ -33,7 +37,11 @@ function Home() {
           aria-controls="home-navigation"
           onClick={() => setMenuOpen((open) => !open)}
         >
-          {menuOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+          {menuOpen ? (
+            <X aria-hidden="true" />
+          ) : (
+            <Menu aria-hidden="true" />
+          )}
         </button>
 
         <nav
@@ -42,15 +50,41 @@ function Home() {
           aria-label="Điều hướng chính"
         >
           {currentUser && (
-            <p className="home-menu-user">Xin chào, {currentUser.full_name}</p>
+            <p className="home-menu-user">
+              Xin chào, {currentUser.full_name}
+            </p>
           )}
-          <a href="#home" onClick={closeMenu}>Trang chủ</a>
-          <a href="#features" onClick={closeMenu}>Tính năng</a>
-          <a href="#footer" onClick={closeMenu}>Liên hệ</a>
+
+          <a href="#home" onClick={closeMenu}>
+            Trang chủ
+          </a>
+
+          <a href="#features" onClick={closeMenu}>
+            Tính năng
+          </a>
+
+          <a href="#footer" onClick={closeMenu}>
+            Liên hệ
+          </a>
 
           {currentUser && (
-            <Link to="/interview/history" onClick={closeMenu}>
+            <Link
+              to="/interview/history"
+              onClick={closeMenu}
+            >
               Lịch sử phỏng vấn
+            </Link>
+          )}
+
+          {/* Hiển thị Admin trong menu mobile */}
+          {isAdmin && (
+            <Link
+              to="/admin"
+              className="home-admin-mobile"
+              onClick={closeMenu}
+            >
+              <ShieldCheck size={18} />
+              Trang quản trị
             </Link>
           )}
 
@@ -65,12 +99,27 @@ function Home() {
           )}
         </nav>
 
-        <div className={currentUser ? 'auth auth--signed-in' : 'auth'}>
+        <div
+          className={
+            currentUser ? 'auth auth--signed-in' : 'auth'
+          }
+        >
           {currentUser ? (
             <>
               <span className="user-name">
                 Xin chào, {currentUser.full_name}
               </span>
+
+              {/* Nút Admin trên màn hình lớn */}
+              {isAdmin && (
+                <Link
+                  to="/admin"
+                  className="home-admin-btn"
+                >
+                  <ShieldCheck size={18} />
+                  Trang quản trị
+                </Link>
+              )}
 
               <button
                 type="button"
@@ -92,12 +141,16 @@ function Home() {
       <main>
         <section className="hero" id="home">
           <h1>Luyện phỏng vấn cùng AI</h1>
+
           <p>
             Nâng cao kỹ năng phỏng vấn với công nghệ AI.
             Thực hành, nhận đánh giá và cải thiện mỗi ngày.
           </p>
 
-          <Link to={currentUser ? '/interview' : '/login'} className="btn">
+          <Link
+            to={currentUser ? '/interview' : '/login'}
+            className="btn"
+          >
             Bắt đầu phỏng vấn
           </Link>
         </section>

@@ -1,3 +1,7 @@
+import AdminPositions from "./pages/admin/AdminPositions";
+import AdminQuestions from "./pages/admin/AdminQuestions";
+import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import InterviewHistory from './pages/InterviewHistory.jsx';
@@ -14,9 +18,34 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route
+          path="/admin"
+          element={
+            <AdminProtectedRoute>
+              <AdminDashboard />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/questions"
+          element={
+            <AdminProtectedRoute>
+              <AdminQuestions />
+            </AdminProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/positions"
+          element={
+            <AdminProtectedRoute>
+              <AdminPositions />
+            </AdminProtectedRoute>
+          }
+        />
         <Route path="/interview" element={<InterviewSetup />} />
         <Route path="/interview/room" element={<InterviewRoom />} />
         <Route path="/interview/history" element={<InterviewHistory />} />
