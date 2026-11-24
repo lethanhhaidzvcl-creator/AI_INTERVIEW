@@ -41,6 +41,14 @@ const evaluateWithAI = async (positionName, level, qaList, simulateError = false
 
     const apiKey = process.env.GEMINI_API_KEY?.trim();
 
+    if (!apiKey) {
+        const error = new Error(
+            'Chưa cấu hình GEMINI_API_KEY. Không thể chấm điểm bằng AI.'
+        );
+        error.code = 'AI_CONFIG_ERROR';
+        throw error;
+    }
+
     if (apiKey) {
         const prompt = `Bạn là chuyên gia phỏng vấn kỹ thuật cho vị trí ${positionName} (${level}).
 Hãy đánh giá danh sách câu hỏi và câu trả lời của ứng viên dưới đây:
@@ -113,46 +121,48 @@ Trả về DUY NHẤT một chuỗi JSON hợp lệ (không bọc markdown) theo
             .replace(/```$/i, '')
             .trim();
 
-        return JSON.parse(cleanJson);
+        let result;
+
+        try {
+            result = JSON.parse(cleanJson);
+        } catch (error) {
+            const parseError = new Error(
+                'Gemini trả về JSON không hợp lệ'
+            );
+            parseError.code = 'AI_INVALID_RESPONSE';
+            throw parseError;
+        }
+
+        if (
+            !result ||
+            typeof result.overall_score !== 'number' ||
+            !Number.isFinite(result.overall_score) ||
+            result.overall_score < 0 ||
+            result.overall_score > 10 ||
+            typeof result.summary_feedback !== 'string' ||
+            !Array.isArray(result.details) ||
+            result.details.length === 0 ||
+            !result.details.every(item =>
+                item &&
+                typeof item.criterion_name === 'string' &&
+                item.criterion_name.trim().length > 0 &&
+                typeof item.score === 'number' &&
+                Number.isFinite(item.score) &&
+                item.score >= 0 &&
+                item.score <= 10
+            )
+        ) {
+            const validationError = new Error(
+                'Dữ liệu chấm điểm Gemini không hợp lệ'
+            );
+            validationError.code = 'AI_INVALID_RESPONSE';
+            throw validationError;
+        }
+
+        return result;
+
     }
 
-    const answeredCount = qaList.filter(
-        (item) => item.answer_text && item.answer_text.trim().length > 0
-    ).length;
-
-    const avgLength = answeredCount > 0
-        ? qaList.reduce(
-            (sum, item) => sum + (item.answer_text ? item.answer_text.trim().length : 0),
-            0
-        ) / qaList.length
-        : 0;
-
-    let baseScore = 5.0;
-    if (answeredCount === 0) baseScore = 2.0;
-    else if (avgLength > 80) baseScore = 8.5;
-    else if (avgLength > 30) baseScore = 7.5;
-    else baseScore = 6.5;
-
-    return {
-        overall_score: Number(baseScore.toFixed(1)),
-        summary_feedback: `Ứng viên đã hoàn thành ${answeredCount}/${qaList.length} câu hỏi cho vị trí ${positionName} (${level}). Câu trả lời bám sát trọng tâm kỹ thuật.`,
-        details: [
-            {
-                criterion_name: 'Kiến thức chuyên môn',
-                score: Number(baseScore.toFixed(1)),
-                strength: 'Nắm được các khái niệm cốt lõi của câu hỏi.',
-                weakness: 'Một số ý giải thích còn ngắn gọn.',
-                suggestion: 'Bổ sung thêm ví dụ thực tế khi trình bày.'
-            },
-            {
-                criterion_name: 'Mức độ hoàn thiện',
-                score: Number(Math.min(10, baseScore + 0.5).toFixed(1)),
-                strength: 'Trả lời đúng trọng tâm câu hỏi đặt ra.',
-                weakness: 'Chưa đào sâu các trường hợp biên (edge cases).',
-                suggestion: 'Phân tích thêm ưu và nhược điểm của từng giải pháp.'
-            }
-        ]
-    };
 };
 
 const evaluateAndSaveSession = async (sessionId, options = {}) => {
