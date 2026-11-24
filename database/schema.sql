@@ -1,5 +1,7 @@
-DROP DATABASE IF EXISTS ai_interview_db;
-CREATE DATABASE ai_interview_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS ai_interview_db
+CHARACTER SET utf8mb4
+COLLATE utf8mb4_unicode_ci;
+
 USE ai_interview_db;
 
 -- 1. Bảng users
@@ -10,7 +12,7 @@ CREATE TABLE users (
     full_name VARCHAR(100) NOT NULL,
     target_role VARCHAR(100) NULL,
     skills TEXT NULL,
-    role VARCHAR(20) NOT NULL DEFAULT 'candidate',
+    role VARCHAR(20) NOT NULL DEFAULT 'USER',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
