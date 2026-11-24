@@ -63,9 +63,9 @@ function Home() {
             Tính năng
           </a>
 
-          <a href="#footer" onClick={closeMenu}>
+          <Link to="/contact" onClick={closeMenu}>
             Liên hệ
-          </a>
+          </Link>
 
           {currentUser && (
             <Link

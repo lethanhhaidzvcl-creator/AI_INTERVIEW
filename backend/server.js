@@ -10,6 +10,7 @@ const userRoutes = require('./routes/userRoutes');
 const positionRoutes = require('./routes/positionRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const feedbackRoutes = require("./routes/feedbackRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -65,6 +66,7 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/positions', positionRoutes);
 app.use('/api/v1/sessions', sessionRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use("/api/v1/feedback", feedbackRoutes);
 
 // Xử lý lỗi không mong muốn
 app.use((err, req, res, next) => {

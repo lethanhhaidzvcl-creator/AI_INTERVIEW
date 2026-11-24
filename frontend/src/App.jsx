@@ -1,3 +1,4 @@
+import Contact from './pages/Contact.jsx';
 import AdminPositions from "./pages/admin/AdminPositions";
 import AdminQuestions from "./pages/admin/AdminQuestions";
 import AdminProtectedRoute from "./components/admin/AdminProtectedRoute";
@@ -22,6 +23,7 @@ function App() {
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/contact" element={<Contact />} />
         <Route
           path="/admin"
           element={
